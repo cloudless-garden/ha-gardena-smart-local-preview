@@ -1,0 +1,12 @@
+# Editors
+.claude/
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+
+# Python
+*.pyc
+.ruff_cache/
+.venv/
