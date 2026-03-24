@@ -4,6 +4,7 @@ import logging
 from typing import Any
 
 from homeassistant.components.valve import ValveEntity, ValveEntityFeature
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -16,13 +17,12 @@ from gardena_smart_local_api.devices import WaterControl
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_platform(
+async def async_setup_entry(
     hass: HomeAssistant,
-    config: dict,
+    entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
-    discovery_info: dict | None = None,
 ) -> None:
-    coordinator: GardenaSmartLocalCoordinator = hass.data[DOMAIN]["yaml"]
+    coordinator: GardenaSmartLocalCoordinator = hass.data[DOMAIN][entry.entry_id]
     known_devices: set[str] = set()
 
     def _add_new_devices() -> None:
