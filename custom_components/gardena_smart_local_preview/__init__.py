@@ -2,6 +2,7 @@ import logging
 
 import voluptuous as vol
 
+from homeassistant.config_entries import ConfigEntry, SOURCE_IMPORT
 from homeassistant.core import HomeAssistant
 from homeassistant.const import (
     CONF_HOST,
@@ -11,7 +12,6 @@ from homeassistant.const import (
     Platform,
 )
 import homeassistant.helpers.config_validation as cv
-from homeassistant.helpers import discovery
 
 from .const import DEFAULT_PORT, DOMAIN
 from .coordinator import GardenaSmartLocalCoordinator
@@ -40,24 +40,42 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         return True
 
     conf = config[DOMAIN]
+    hass.async_create_task(
+        hass.config_entries.flow.async_init(
+            DOMAIN,
+            context={"source": SOURCE_IMPORT},
+            data={
+                CONF_HOST: conf[CONF_HOST],
+                CONF_PORT: conf[CONF_PORT],
+                CONF_PASSWORD: conf[CONF_PASSWORD],
+            },
+        )
+    )
+    return True
+
+
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    hass.data.setdefault(DOMAIN, {})
+
     coordinator = GardenaSmartLocalCoordinator(
         hass,
-        host=conf[CONF_HOST],
-        port=conf[CONF_PORT],
-        password=conf[CONF_PASSWORD],
+        host=entry.data[CONF_HOST],
+        port=entry.data[CONF_PORT],
+        password=entry.data[CONF_PASSWORD],
     )
     await coordinator.async_connect()
-
-    hass.data[DOMAIN]["yaml"] = coordinator
+    hass.data[DOMAIN][entry.entry_id] = coordinator
 
     async def _stop(_event: object) -> None:
         await coordinator.async_disconnect()
 
-    hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, _stop)
+    entry.async_on_unload(hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, _stop))
 
-    for platform in PLATFORMS:
-        hass.async_create_task(
-            discovery.async_load_platform(hass, platform, DOMAIN, {}, config)
-        )
-
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
+
+
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    coordinator: GardenaSmartLocalCoordinator = hass.data[DOMAIN].pop(entry.entry_id)
+    await coordinator.async_disconnect()
+    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
