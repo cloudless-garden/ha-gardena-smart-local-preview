@@ -2,7 +2,7 @@
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
 
-Home Assistant integration for GARDENA smart devices using local communication.
+Home Assistant integration for GARDENA smart devices using local communication (not going through the cloud).
 
 ## Features
 
@@ -25,7 +25,7 @@ Home Assistant integration for GARDENA smart devices using local communication.
 
 ### Manual Installation
 
-1. Copy the `custom_components/gardena_smart_local_preview` directory to your Home Assistant `custom_components` directory
+1. Copy the `custom_components/gardena_smart_local_preview` directory to your Home Assistant's `custom_components` directory
 2. Restart Home Assistant
 
 ## Configuration
@@ -35,11 +35,12 @@ Add the following to your `configuration.yaml`:
 ```yaml
 gardena_smart_local_preview:
   host: 192.168.1.100  # IP address or hostname of your GARDENA smart Gateway
-  password: 0824b95b   # First block of the gateway ID
+  password: 0824b95b   # First eight characters of the gateway's ID
 ```
 
-*NOTE*: The password is the first block of the gateway ID printed on the back of the device.
-(example: `0824b95b-996c-48f7-83dc-d2d1bac08e7e` → password: `0824b95b`)
+> [!TIP]
+> The password is the first block of the gateway ID printed on the back of the device.
+> (example: `0824b95b-996c-48f7-83dc-d2d1bac08e7e` → password: `0824b95b`)
 
 After adding the configuration, restart Home Assistant.
 
