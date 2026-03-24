@@ -12,7 +12,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .coordinator import GardenaSmartLocalCoordinator
-from gardena_smart_local_api.devices import WaterControl
+from gardena_smart_local_api.devices import Gen1WaterControl
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ async def async_setup_entry(
             return
         new_entities = []
         for device in coordinator.data.values():
-            if isinstance(device, WaterControl) and device.id not in known_devices:
+            if isinstance(device, Gen1WaterControl) and device.id not in known_devices:
                 known_devices.add(device.id)
                 new_entities.append(GardenaValve(coordinator, device))
                 _LOGGER.info("Adding new valve entity for device %s", device.id)
@@ -44,7 +44,7 @@ class GardenaValve(CoordinatorEntity[GardenaSmartLocalCoordinator], ValveEntity)
     def __init__(
         self,
         coordinator: GardenaSmartLocalCoordinator,
-        device: WaterControl,
+        device: Gen1WaterControl,
     ) -> None:
         super().__init__(coordinator)
         self._device = device
