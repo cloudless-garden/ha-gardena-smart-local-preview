@@ -13,6 +13,7 @@ from homeassistant.const import (
 )
 import homeassistant.helpers.config_validation as cv
 
+from . import config_flow as config_flow
 from .const import DEFAULT_PORT, DOMAIN
 from .coordinator import GardenaSmartLocalCoordinator
 

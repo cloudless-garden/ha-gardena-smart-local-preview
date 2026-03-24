@@ -1,0 +1,53 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to GARDENA smart Gateway",
+        "data": {
+          "host": "Host",
+          "port": "Port",
+          "password": "Password"
+        },
+        "data_description": {
+          "host": "IP address or hostname of your GARDENA smart Gateway",
+          "password": "First block of the gateway ID printed on the back of the device (e.g. `0824b95b` from `0824b95b-996c-48f7-83dc-…`)."
+        }
+      },
+      "discovery_confirm": {
+        "title": "GARDENA smart Gateway found",
+        "description": "Do you want to set up the GARDENA smart Gateway **{name}**?",
+        "data": {
+          "host": "Host",
+          "port": "Port",
+          "password": "Password"
+        },
+        "data_description": {
+          "host": "IP address or hostname of your GARDENA smart Gateway",
+          "password": "First block of the gateway ID printed on the back of the device (e.g. `0824b95b` from `0824b95b-996c-48f7-83dc-…`)."
+        }
+      },
+      "reconfigure": {
+        "title": "Update GARDENA smart Gateway settings",
+        "data": {
+          "host": "Host",
+          "port": "Port",
+          "password": "Password"
+        },
+        "data_description": {
+          "host": "IP address or hostname of your GARDENA smart Gateway",
+          "password": "First block of the gateway ID printed on the back of the device (e.g. `0824b95b` from `0824b95b-996c-48f7-83dc-…`)."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to the gateway",
+      "invalid_auth": "Invalid password",
+      "unknown": "Unexpected error"
+    },
+    "abort": {
+      "already_configured": "Gateway is already configured",
+      "already_in_progress": "It seems the gateway has been autodetected, click \"Add\" on discovered integration instead",
+      "reconfigure_successful": "GARDENA smart Gateway settings updated"
+    }
+  }
+}

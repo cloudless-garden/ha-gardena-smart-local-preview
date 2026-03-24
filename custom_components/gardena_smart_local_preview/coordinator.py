@@ -1,10 +1,10 @@
 import asyncio
 import base64
 import logging
-import ssl
 import aiohttp
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+from homeassistant.util.ssl import get_default_no_verify_context
 
 from gardena_smart_local_api.devices import (
     Device,
@@ -54,9 +54,7 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
 
     async def async_connect(self) -> None:
         if self._ssl_context is None:
-            self._ssl_context = await self.hass.async_add_executor_job(
-                self._create_ssl_context
-            )
+            self._ssl_context = get_default_no_verify_context()
         self._task = self.hass.async_create_background_task(
             self._ws_loop(), "gardena_smart_local_preview_websocket"
         )
@@ -68,13 +66,6 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
                 await self._task
             except asyncio.CancelledError:
                 pass
-
-    def _create_ssl_context(self) -> ssl.SSLContext:
-        """Create an insecure SSL context for self-signed certificates."""
-        context = ssl.create_default_context()
-        context.check_hostname = False
-        context.verify_mode = ssl.CERT_NONE
-        return context
 
     async def _ws_loop(self) -> None:
         while True:
