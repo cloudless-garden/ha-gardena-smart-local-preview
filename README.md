@@ -46,17 +46,23 @@ systemctl start websocketd
 
 ## Configuration
 
-Add the following to your `configuration.yaml`:
+After installation, go to **Settings → Devices & Services → Add Integration** and search for "GARDENA smart local". Enter the IP address or hostname of your gateway and the password.
+
+The gateway can also be discovered automatically via Zeroconf — look for a notification in Home Assistant after installation.
+
+> [!TIP]
+> The password is the first block of the gateway ID printed on the back of the device.
+> (example: `0824b95b-996c-48f7-83dc-d2d1bac08e7e` → password: `0824b95b`)
+
+### YAML configuration (legacy)
+
+Manual YAML configuration is still supported:
 
 ```yaml
 gardena_smart_local_preview:
   host: 192.168.1.100  # IP address or hostname of your GARDENA smart Gateway
   password: 0824b95b   # First eight characters of the gateway's ID
 ```
-
-> [!TIP]
-> The password is the first block of the gateway ID printed on the back of the device.
-> (example: `0824b95b-996c-48f7-83dc-d2d1bac08e7e` → password: `0824b95b`)
 
 After adding the configuration, restart Home Assistant.
 
