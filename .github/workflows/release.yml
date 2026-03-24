@@ -1,0 +1,34 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  validate-version:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Check manifest version matches tag
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          MANIFEST_VERSION=$(jq -r '.version' custom_components/gardena_smart_local_preview/manifest.json)
+          if [ "$TAG" != "$MANIFEST_VERSION" ]; then
+            echo "Tag $TAG does not match manifest version $MANIFEST_VERSION"
+            exit 1
+          fi
+
+  release:
+    needs: validate-version
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2.6.1
+        with:
+          generate_release_notes: true
