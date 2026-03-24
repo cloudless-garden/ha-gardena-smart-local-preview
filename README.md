@@ -9,6 +9,22 @@ Home Assistant integration for GARDENA smart devices using local communication (
 - Local communication with GARDENA smart devices
 - Real-time updates via WebSocket
 
+## Enabling WebSocket Support on the Gateway
+
+The still experimental WebSocket service running on the gateway is disabled by default.
+At least for now, you need shell access to your GARDENA smart Gateway to enable it.
+The instructions for that can be found in the [smart-garden-gateway-public] repository.
+
+On the gateway, run the following commands:
+
+```txt
+touch /etc/enable-websocketd
+systemctl restart firewall
+systemctl start websocketd
+```
+
+[smart-garden-gateway-public]: https://github.com/husqvarnagroup/smart-garden-gateway-public#getting-access
+
 ## Installation
 
 ### HACS (Recommended)
