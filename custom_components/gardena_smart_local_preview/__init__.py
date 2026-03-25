@@ -16,7 +16,7 @@ import homeassistant.helpers.config_validation as cv
 from .const import DEFAULT_PORT, DOMAIN
 from .coordinator import GardenaSmartLocalCoordinator
 
-PLATFORMS: list[Platform] = [Platform.VALVE]
+PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.VALVE]
 _LOGGER = logging.getLogger(__name__)
 
 CONFIG_SCHEMA = vol.Schema(
