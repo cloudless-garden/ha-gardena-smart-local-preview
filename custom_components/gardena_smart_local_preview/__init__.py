@@ -18,6 +18,7 @@ from .const import DEFAULT_PORT, DOMAIN
 from .coordinator import GardenaSmartLocalCoordinator
 
 PLATFORMS: list[Platform] = [
+    Platform.BUTTON,
     Platform.NUMBER,
     Platform.SENSOR,
     Platform.SWITCH,
