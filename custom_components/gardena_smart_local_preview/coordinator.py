@@ -3,6 +3,11 @@ import base64
 import logging
 import aiohttp
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.issue_registry import (
+    async_create_issue,
+    async_delete_issue,
+    IssueSeverity,
+)
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util.ssl import get_default_no_verify_context
 
@@ -10,6 +15,7 @@ from gardena_smart_local_api.devices import (
     Device,
     DeviceMap,
     build_discovery_obj,
+    build_inclusion_obj,
     create_devices_from_messages,
 )
 from gardena_smart_local_api.messages import (
@@ -19,13 +25,21 @@ from gardena_smart_local_api.messages import (
     IngressMessageList,
 )
 
+from gardena_smart_local_api.sgtin96 import parse_sgtin96
+
+from .const import DOMAIN
+
 _LOGGER = logging.getLogger(__name__)
+
+INCLUDE_REPLY_TIMEOUT = 10
+INCLUDABLE_DEVICE_HEARTBEAT_TIMEOUT = 25
 
 
 class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
     def __init__(
         self,
         hass: HomeAssistant,
+        entry_id: str,
         host: str,
         port: int,
         password: str,
@@ -35,6 +49,7 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
             _LOGGER,
             name="GARDENA smart local",
         )
+        self._entry_id = entry_id
         self.host = host
         self.port = port
         self.password = password
@@ -50,6 +65,8 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
         self._ssl_context = None
         self._msg_queue: asyncio.Queue[str] = asyncio.Queue()
         self._pending_replies: dict[str, asyncio.Future[Reply]] = {}
+        self._includable_events: dict[str, Event] = {}
+        self._includable_timeouts: dict[str, asyncio.TimerHandle] = {}
 
     async def _async_update_data(self) -> DeviceMap:
         return self._devices
@@ -62,6 +79,14 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
         )
 
     async def async_disconnect(self) -> None:
+        if self._includable_timeouts:
+            _LOGGER.debug(
+                "Cancelling %d pending includable device timeouts",
+                len(self._includable_timeouts),
+            )
+            for handle in self._includable_timeouts.values():
+                handle.cancel()
+            self._includable_timeouts.clear()
         if self._task:
             self._task.cancel()
             try:
@@ -181,7 +206,9 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
 
             for msg in messages:
                 if isinstance(msg, Event):
-                    if msg.entity.device:
+                    if msg.entity.path.object_name == "includable_device":
+                        await self._handle_includable_event(msg)
+                    elif msg.entity.device:
                         device_id = msg.entity.device
                         if device_id in self._devices:
                             _LOGGER.debug(
@@ -201,6 +228,122 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
 
         except Exception as err:
             _LOGGER.warning("Error handling messages (may be non-critical): %s", err)
+
+    def _expire_includable(self, instance_id: str) -> None:
+        _LOGGER.debug(
+            "Includable device %s heartbeat timed out, removing issue", instance_id
+        )
+        self._includable_events.pop(instance_id, None)
+        self._includable_timeouts.pop(instance_id, None)
+        async_delete_issue(self.hass, DOMAIN, f"include_{instance_id}")
+
+    async def _handle_includable_event(self, event: Event) -> None:
+        instance_id = event.entity.path.object_instance_id
+
+        if event.op == "delete":
+            _LOGGER.debug(
+                "Includable device %s delete received, cancelling timeout", instance_id
+            )
+            handle = self._includable_timeouts.pop(instance_id, None)
+            if handle is not None:
+                handle.cancel()
+            self._includable_events.pop(instance_id, None)
+            async_delete_issue(self.hass, DOMAIN, f"include_{instance_id}")
+            return
+
+        is_new = instance_id not in self._includable_events
+
+        # Always reschedule the heartbeat timeout
+        handle = self._includable_timeouts.pop(instance_id, None)
+        if handle is not None:
+            handle.cancel()
+        self._includable_timeouts[instance_id] = self.hass.loop.call_later(
+            INCLUDABLE_DEVICE_HEARTBEAT_TIMEOUT,
+            self._expire_includable,
+            instance_id,
+        )
+
+        if not is_new:
+            _LOGGER.debug(
+                "Includable device %s heartbeat, rescheduled timeout", instance_id
+            )
+            return
+
+        self._includable_events[instance_id] = event
+        identifier = event.payload.get("identifier", {}).get("vs", instance_id)
+
+        try:
+            info = parse_sgtin96(identifier)
+            name = await info.get_model_name()
+            device_name = f"{name} {info.serial:08d}"
+        except (ValueError, Exception):
+            device_name = identifier
+
+        _LOGGER.debug(
+            "Includable device %s discovered (%s), creating issue and scheduling timeout",
+            instance_id,
+            device_name,
+        )
+        _LOGGER.info("Discovered includable device: %s", device_name)
+
+        async_create_issue(
+            self.hass,
+            DOMAIN,
+            f"include_{instance_id}",
+            is_fixable=True,
+            severity=IssueSeverity.WARNING,
+            translation_key="new_includable_device",
+            translation_placeholders={"device_name": device_name},
+            data={
+                "entry_id": self._entry_id,
+                "instance_id": instance_id,
+                "identifier": identifier,
+                "device_name": device_name,
+            },
+        )
+
+    async def async_include_device(self, instance_id: str) -> bool:
+        event = self._includable_events.get(instance_id)
+        if event is None:
+            _LOGGER.error(
+                "No includable device event found for instance %s", instance_id
+            )
+            return False
+
+        if not self._ws:
+            _LOGGER.error("WebSocket not connected")
+            return False
+
+        request = build_inclusion_obj(event.entity.service, instance_id)
+        request_id = request[0].request_id
+
+        future: asyncio.Future[Reply] = self.hass.loop.create_future()
+        self._pending_replies[request_id] = future
+
+        try:
+            await self._ws.send_str(request.model_dump_json())
+            _LOGGER.debug("Sent include request for device %s", instance_id)
+            reply = await asyncio.wait_for(future, timeout=INCLUDE_REPLY_TIMEOUT)
+        except asyncio.TimeoutError:
+            _LOGGER.error(
+                "Timeout waiting for inclusion reply for device %s", instance_id
+            )
+            self._pending_replies.pop(request_id, None)
+            return False
+        except Exception as err:
+            _LOGGER.error("Error including device %s: %s", instance_id, err)
+            self._pending_replies.pop(request_id, None)
+            return False
+
+        if reply.success:
+            _LOGGER.debug(
+                "Includable device %s included successfully, deleting issue"
+                " (heartbeat timeout will clean up remaining state)",
+                instance_id,
+            )
+            async_delete_issue(self.hass, DOMAIN, f"include_{instance_id}")
+
+        return reply.success
 
     def _update_device(self, device: Device) -> None:
         is_new = device.id not in self._devices
