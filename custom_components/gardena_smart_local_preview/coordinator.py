@@ -3,6 +3,11 @@ import base64
 import logging
 import aiohttp
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.issue_registry import (
+    async_create_issue,
+    async_delete_issue,
+    IssueSeverity,
+)
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util.ssl import get_default_no_verify_context
 
@@ -10,6 +15,7 @@ from gardena_smart_local_api.devices import (
     Device,
     DeviceMap,
     build_discovery_obj,
+    build_include_obj,
     create_devices_from_messages,
 )
 from gardena_smart_local_api.messages import (
@@ -19,13 +25,18 @@ from gardena_smart_local_api.messages import (
     IngressMessageList,
 )
 
+from .const import DOMAIN
+
 _LOGGER = logging.getLogger(__name__)
+
+INCLUDE_REPLY_TIMEOUT = 10
 
 
 class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
     def __init__(
         self,
         hass: HomeAssistant,
+        entry_id: str,
         host: str,
         port: int,
         password: str,
@@ -35,6 +46,7 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
             _LOGGER,
             name="GARDENA smart local",
         )
+        self._entry_id = entry_id
         self.host = host
         self.port = port
         self.password = password
@@ -48,6 +60,8 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
         self._task = None
         self._devices: DeviceMap = DeviceMap({})
         self._ssl_context = None
+        self._includable_events: dict[str, Event] = {}
+        self._pending_replies: dict[str, asyncio.Future] = {}
 
     async def _async_update_data(self) -> DeviceMap:
         return self._devices
@@ -127,6 +141,13 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
 
             updated = False
 
+            # Resolve pending reply futures before any other processing
+            for msg in messages:
+                if isinstance(msg, Reply):
+                    future = self._pending_replies.pop(msg.request_id, None)
+                    if future is not None and not future.done():
+                        future.set_result(msg)
+
             if any(isinstance(msg, Reply) for msg in messages):
                 devices = await create_devices_from_messages(messages)
                 self._update_devices(devices)
@@ -134,7 +155,9 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
 
             for msg in messages:
                 if isinstance(msg, Event):
-                    if msg.entity.device:
+                    if msg.entity.path.object_name == "includable_device":
+                        await self._handle_includable_event(msg)
+                    elif msg.entity.device:
                         device_id = msg.entity.device
                         if device_id in self._devices:
                             _LOGGER.debug(
@@ -158,6 +181,75 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
                 err,
                 ws_message,
             )
+
+    async def _handle_includable_event(self, event: Event) -> None:
+        instance_id = event.entity.path.object_instance_id
+
+        if event.op == "delete":
+            self._includable_events.pop(instance_id, None)
+            async_delete_issue(self.hass, DOMAIN, f"include_{instance_id}")
+            return
+
+        if instance_id in self._includable_events:
+            return
+
+        self._includable_events[instance_id] = event
+        identifier = event.payload.get("identifier", {}).get("vs", instance_id)
+        _LOGGER.info("Discovered includable device: %s", identifier)
+
+        async_create_issue(
+            self.hass,
+            DOMAIN,
+            f"include_{instance_id}",
+            is_fixable=True,
+            severity=IssueSeverity.WARNING,
+            translation_key="new_includable_device",
+            translation_placeholders={"identifier": identifier},
+            data={
+                "entry_id": self._entry_id,
+                "instance_id": instance_id,
+                "identifier": identifier,
+            },
+        )
+
+    async def async_include_device(self, instance_id: str) -> bool:
+        event = self._includable_events.get(instance_id)
+        if event is None:
+            _LOGGER.error(
+                "No includable device event found for instance %s", instance_id
+            )
+            return False
+
+        if not self._ws:
+            _LOGGER.error("WebSocket not connected")
+            return False
+
+        request = build_include_obj(event)
+        request_id = request[0].request_id
+
+        future: asyncio.Future[Reply] = self.hass.loop.create_future()
+        self._pending_replies[request_id] = future
+
+        try:
+            await self._ws.send_str(request.model_dump_json())
+            _LOGGER.debug("Sent include request for device %s", instance_id)
+            reply = await asyncio.wait_for(future, timeout=INCLUDE_REPLY_TIMEOUT)
+        except asyncio.TimeoutError:
+            _LOGGER.error(
+                "Timeout waiting for inclusion reply for device %s", instance_id
+            )
+            self._pending_replies.pop(request_id, None)
+            return False
+        except Exception as err:
+            _LOGGER.error("Error including device %s: %s", instance_id, err)
+            self._pending_replies.pop(request_id, None)
+            return False
+
+        if reply.success:
+            self._includable_events.pop(instance_id, None)
+            async_delete_issue(self.hass, DOMAIN, f"include_{instance_id}")
+
+        return reply.success
 
     def _update_device(self, device: Device) -> None:
         is_new = device.id not in self._devices

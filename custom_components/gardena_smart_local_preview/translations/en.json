@@ -49,5 +49,25 @@
       "already_in_progress": "It seems the gateway has been autodetected, click \"Add\" on discovered integration instead",
       "reconfigure_successful": "GARDENA smart Gateway settings updated"
     }
+  },
+  "issues": {
+    "new_includable_device": {
+      "title": "New GARDENA device ready to include",
+      "description": "Your GARDENA smart Gateway has detected a new device **{identifier}** that is ready to be added to your system. Click **Fix** to include it.",
+      "fix_flow": {
+        "step": {
+          "init": {
+            "title": "Include device",
+            "description": "Click **Submit** to include device **{identifier}** into your GARDENA smart system."
+          }
+        },
+        "error": {
+          "inclusion_failed": "Inclusion failed. Make sure the device is powered on and within range of the gateway, then try again."
+        },
+        "abort": {
+          "coordinator_not_found": "The GARDENA smart integration is no longer available."
+        }
+      }
+    }
   }
 }
