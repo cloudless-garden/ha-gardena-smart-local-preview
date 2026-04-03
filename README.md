@@ -73,6 +73,7 @@ After adding the configuration, restart Home Assistant.
 | GARDENA smart Water Control  | 19031-20    | Valve, temperature, battery, RF link quality                |
 | GARDENA smart Sensor         | 19030-20    | Temperature, soil moisture, light, battery, RF link quality |
 | GARDENA smart Sensor II      | 19040-20    | Temperature, soil moisture, battery, RF link quality        |
+| GARDENA smart Power Adapter  | 19095-20    | Switch                                                      |
 
 ## Related Projects
 
