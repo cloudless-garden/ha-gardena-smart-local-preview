@@ -128,9 +128,7 @@ class GardenaSoilMoistureSensor(
         super().__init__(coordinator)
         self._device = device
         self._attr_unique_id = f"{device.id}_soil_moisture"
-        self._attr_name = (
-            f"{device.manufacturer} {device.model_definition.name} Soil Moisture"
-        )
+        self._attr_name = f"GARDENA {device.model_definition.name} Soil Moisture"
         self._attr_device_class = SensorDeviceClass.MOISTURE
         self._attr_state_class = SensorStateClass.MEASUREMENT
         self._attr_native_unit_of_measurement = PERCENTAGE
@@ -164,7 +162,7 @@ class GardenaLightSensor(CoordinatorEntity[GardenaSmartLocalCoordinator], Sensor
         super().__init__(coordinator)
         self._device = device
         self._attr_unique_id = f"{device.id}_light"
-        self._attr_name = f"{device.manufacturer} {device.model_definition.name} Light"
+        self._attr_name = f"GARDENA {device.model_definition.name} Light"
         self._attr_device_class = SensorDeviceClass.ILLUMINANCE
         self._attr_state_class = SensorStateClass.MEASUREMENT
         self._attr_native_unit_of_measurement = LIGHT_LUX
@@ -200,9 +198,7 @@ class GardenaBatterySensor(
         super().__init__(coordinator)
         self._device = device
         self._attr_unique_id = f"{device.id}_battery"
-        self._attr_name = (
-            f"{device.manufacturer} {device.model_definition.name} Battery"
-        )
+        self._attr_name = f"GARDENA {device.model_definition.name} Battery"
         self._attr_device_class = SensorDeviceClass.BATTERY
         self._attr_state_class = SensorStateClass.MEASUREMENT
         self._attr_native_unit_of_measurement = PERCENTAGE
@@ -238,9 +234,7 @@ class GardenaRfLinkQualitySensor(
         super().__init__(coordinator)
         self._device = device
         self._attr_unique_id = f"{device.id}_rf_link_quality"
-        self._attr_name = (
-            f"{device.manufacturer} {device.model_definition.name} RF Link Quality"
-        )
+        self._attr_name = f"GARDENA {device.model_definition.name} RF Link Quality"
         self._attr_state_class = SensorStateClass.MEASUREMENT
         self._attr_native_unit_of_measurement = PERCENTAGE
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
