@@ -19,6 +19,7 @@ from .coordinator import GardenaSmartLocalCoordinator
 
 PLATFORMS: list[Platform] = [
     Platform.BUTTON,
+    Platform.LAWN_MOWER,
     Platform.NUMBER,
     Platform.SENSOR,
     Platform.SWITCH,
