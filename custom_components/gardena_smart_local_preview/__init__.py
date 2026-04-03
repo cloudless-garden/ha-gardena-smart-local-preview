@@ -17,7 +17,12 @@ from . import config_flow as config_flow
 from .const import DEFAULT_PORT, DOMAIN
 from .coordinator import GardenaSmartLocalCoordinator
 
-PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.SWITCH, Platform.VALVE]
+PLATFORMS: list[Platform] = [
+    Platform.NUMBER,
+    Platform.SENSOR,
+    Platform.SWITCH,
+    Platform.VALVE,
+]
 _LOGGER = logging.getLogger(__name__)
 
 CONFIG_SCHEMA = vol.Schema(
