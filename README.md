@@ -68,8 +68,11 @@ After adding the configuration, restart Home Assistant.
 
 ## Supported Devices
 
-- GARDENA smart Water Control (Article no. 19031-20)
-- more to come...
+| Device                       | Article no. | Entities                                                    |
+| ---------------------------- | ----------- | ----------------------------------------------------------- |
+| GARDENA smart Water Control  | 19031-20    | Valve, temperature, battery, RF link quality                |
+| GARDENA smart Sensor         | 19030-20    | Temperature, soil moisture, light, battery, RF link quality |
+| GARDENA smart Sensor II      | 19040-20    | Temperature, soil moisture, battery, RF link quality        |
 
 ## Related Projects
 
