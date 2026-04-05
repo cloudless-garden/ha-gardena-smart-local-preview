@@ -12,6 +12,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .coordinator import GardenaSmartLocalCoordinator
+from gardena_smart_local_api.devices.device import Device
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -45,7 +46,7 @@ class GardenaIdentifyButton(
     _attr_has_entity_name = True
 
     def __init__(
-        self, coordinator: GardenaSmartLocalCoordinator, device: object
+        self, coordinator: GardenaSmartLocalCoordinator, device: Device
     ) -> None:
         super().__init__(coordinator)
         self._device = device
@@ -54,7 +55,7 @@ class GardenaIdentifyButton(
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
         self._attr_device_info = dr.DeviceInfo(
             identifiers={(DOMAIN, device.id)},
-            name=f"GARDENA {device.model_definition.name}",
+            name=f"GARDENA {device.model_definition.name} {device.serial_number}",
             manufacturer=device.manufacturer,
             model=device.model_definition.name,
             model_id=device.model_definition.model_number,
