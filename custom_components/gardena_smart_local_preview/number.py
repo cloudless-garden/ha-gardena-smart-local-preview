@@ -67,7 +67,7 @@ class GardenaButtonConfigTime(
         self._attr_name = "Button Time"
         self._attr_device_info = dr.DeviceInfo(
             identifiers={(DOMAIN, device.id)},
-            name=f"GARDENA {device.model_definition.name}",
+            name=f"GARDENA {device.model_definition.name} {device.serial_number}",
             manufacturer=device.manufacturer,
             model=device.model_definition.name,
             model_id=device.model_definition.model_number,
