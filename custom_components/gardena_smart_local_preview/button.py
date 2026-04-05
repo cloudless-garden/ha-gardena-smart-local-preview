@@ -42,6 +42,8 @@ async def async_setup_entry(
 class GardenaIdentifyButton(
     CoordinatorEntity[GardenaSmartLocalCoordinator], ButtonEntity
 ):
+    _attr_has_entity_name = True
+
     def __init__(
         self, coordinator: GardenaSmartLocalCoordinator, device: object
     ) -> None:

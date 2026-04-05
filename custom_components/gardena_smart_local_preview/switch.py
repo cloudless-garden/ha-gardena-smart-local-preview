@@ -44,6 +44,8 @@ async def async_setup_entry(
 
 
 class GardenaPowerSwitch(CoordinatorEntity[GardenaSmartLocalCoordinator], SwitchEntity):
+    _attr_has_entity_name = True
+
     def __init__(
         self,
         coordinator: GardenaSmartLocalCoordinator,
@@ -52,11 +54,11 @@ class GardenaPowerSwitch(CoordinatorEntity[GardenaSmartLocalCoordinator], Switch
         super().__init__(coordinator)
         self._device = device
         self._attr_unique_id = f"{device.id}_switch"
-        self._attr_name = f"GARDENA {device.model_definition.name}"
+        self._attr_name = None
 
         self._attr_device_info = dr.DeviceInfo(
             identifiers={(DOMAIN, device.id)},
-            name=self._attr_name,
+            name=f"GARDENA {device.model_definition.name}",
             manufacturer=device.manufacturer,
             model=device.model_definition.name,
             model_id=device.model_definition.model_number,
