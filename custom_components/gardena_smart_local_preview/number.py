@@ -48,6 +48,7 @@ async def async_setup_entry(
 class GardenaButtonConfigTime(
     CoordinatorEntity[GardenaSmartLocalCoordinator], NumberEntity
 ):
+    _attr_has_entity_name = True
     _attr_native_min_value = 0
     _attr_native_max_value = 90
     _attr_native_step = 1
@@ -63,9 +64,16 @@ class GardenaButtonConfigTime(
         super().__init__(coordinator)
         self._device = device
         self._attr_unique_id = f"{device.id}_button_config_time"
-        self._attr_name = f"GARDENA {device.model_definition.name} Button Time"
+        self._attr_name = "Button Time"
         self._attr_device_info = dr.DeviceInfo(
             identifiers={(DOMAIN, device.id)},
+            name=f"GARDENA {device.model_definition.name}",
+            manufacturer=device.manufacturer,
+            model=device.model_definition.name,
+            model_id=device.model_definition.model_number,
+            sw_version=device.software_version,
+            hw_version=device.hardware_version,
+            serial_number=device.serial_number,
         )
 
     @property

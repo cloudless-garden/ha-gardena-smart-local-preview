@@ -84,6 +84,8 @@ async def async_setup_entry(
 class GardenaTemperatureSensor(
     CoordinatorEntity[GardenaSmartLocalCoordinator], SensorEntity
 ):
+    _attr_has_entity_name = True
+
     def __init__(
         self,
         coordinator: GardenaSmartLocalCoordinator,
@@ -92,13 +94,20 @@ class GardenaTemperatureSensor(
         super().__init__(coordinator)
         self._device = device
         self._attr_unique_id = f"{device.id}_temperature"
-        self._attr_name = f"GARDENA {device.model_definition.name} Temperature"
+        self._attr_name = "Temperature"
         self._attr_device_class = SensorDeviceClass.TEMPERATURE
         self._attr_state_class = SensorStateClass.MEASUREMENT
         self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
 
         self._attr_device_info = dr.DeviceInfo(
             identifiers={(DOMAIN, device.id)},
+            name=f"GARDENA {device.model_definition.name}",
+            manufacturer=device.manufacturer,
+            model=device.model_definition.name,
+            model_id=device.model_definition.model_number,
+            sw_version=device.software_version,
+            hw_version=device.hardware_version,
+            serial_number=device.serial_number,
         )
 
     @property
@@ -120,6 +129,8 @@ class GardenaTemperatureSensor(
 class GardenaSoilMoistureSensor(
     CoordinatorEntity[GardenaSmartLocalCoordinator], SensorEntity
 ):
+    _attr_has_entity_name = True
+
     def __init__(
         self,
         coordinator: GardenaSmartLocalCoordinator,
@@ -128,13 +139,20 @@ class GardenaSoilMoistureSensor(
         super().__init__(coordinator)
         self._device = device
         self._attr_unique_id = f"{device.id}_soil_moisture"
-        self._attr_name = f"GARDENA {device.model_definition.name} Soil Moisture"
+        self._attr_name = "Soil Moisture"
         self._attr_device_class = SensorDeviceClass.MOISTURE
         self._attr_state_class = SensorStateClass.MEASUREMENT
         self._attr_native_unit_of_measurement = PERCENTAGE
 
         self._attr_device_info = dr.DeviceInfo(
             identifiers={(DOMAIN, device.id)},
+            name=f"GARDENA {device.model_definition.name}",
+            manufacturer=device.manufacturer,
+            model=device.model_definition.name,
+            model_id=device.model_definition.model_number,
+            sw_version=device.software_version,
+            hw_version=device.hardware_version,
+            serial_number=device.serial_number,
         )
 
     @property
@@ -154,6 +172,8 @@ class GardenaSoilMoistureSensor(
 
 
 class GardenaLightSensor(CoordinatorEntity[GardenaSmartLocalCoordinator], SensorEntity):
+    _attr_has_entity_name = True
+
     def __init__(
         self,
         coordinator: GardenaSmartLocalCoordinator,
@@ -162,13 +182,20 @@ class GardenaLightSensor(CoordinatorEntity[GardenaSmartLocalCoordinator], Sensor
         super().__init__(coordinator)
         self._device = device
         self._attr_unique_id = f"{device.id}_light"
-        self._attr_name = f"GARDENA {device.model_definition.name} Light"
+        self._attr_name = "Light"
         self._attr_device_class = SensorDeviceClass.ILLUMINANCE
         self._attr_state_class = SensorStateClass.MEASUREMENT
         self._attr_native_unit_of_measurement = LIGHT_LUX
 
         self._attr_device_info = dr.DeviceInfo(
             identifiers={(DOMAIN, device.id)},
+            name=f"GARDENA {device.model_definition.name}",
+            manufacturer=device.manufacturer,
+            model=device.model_definition.name,
+            model_id=device.model_definition.model_number,
+            sw_version=device.software_version,
+            hw_version=device.hardware_version,
+            serial_number=device.serial_number,
         )
 
     @property
@@ -190,6 +217,8 @@ class GardenaLightSensor(CoordinatorEntity[GardenaSmartLocalCoordinator], Sensor
 class GardenaBatterySensor(
     CoordinatorEntity[GardenaSmartLocalCoordinator], SensorEntity
 ):
+    _attr_has_entity_name = True
+
     def __init__(
         self,
         coordinator: GardenaSmartLocalCoordinator,
@@ -198,13 +227,20 @@ class GardenaBatterySensor(
         super().__init__(coordinator)
         self._device = device
         self._attr_unique_id = f"{device.id}_battery"
-        self._attr_name = f"GARDENA {device.model_definition.name} Battery"
+        self._attr_name = "Battery"
         self._attr_device_class = SensorDeviceClass.BATTERY
         self._attr_state_class = SensorStateClass.MEASUREMENT
         self._attr_native_unit_of_measurement = PERCENTAGE
 
         self._attr_device_info = dr.DeviceInfo(
             identifiers={(DOMAIN, device.id)},
+            name=f"GARDENA {device.model_definition.name}",
+            manufacturer=device.manufacturer,
+            model=device.model_definition.name,
+            model_id=device.model_definition.model_number,
+            sw_version=device.software_version,
+            hw_version=device.hardware_version,
+            serial_number=device.serial_number,
         )
 
     @property
@@ -226,6 +262,8 @@ class GardenaBatterySensor(
 class GardenaRfLinkQualitySensor(
     CoordinatorEntity[GardenaSmartLocalCoordinator], SensorEntity
 ):
+    _attr_has_entity_name = True
+
     def __init__(
         self,
         coordinator: GardenaSmartLocalCoordinator,
@@ -234,13 +272,20 @@ class GardenaRfLinkQualitySensor(
         super().__init__(coordinator)
         self._device = device
         self._attr_unique_id = f"{device.id}_rf_link_quality"
-        self._attr_name = f"GARDENA {device.model_definition.name} RF Link Quality"
+        self._attr_name = "RF Link Quality"
         self._attr_state_class = SensorStateClass.MEASUREMENT
         self._attr_native_unit_of_measurement = PERCENTAGE
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
         self._attr_device_info = dr.DeviceInfo(
             identifiers={(DOMAIN, device.id)},
+            name=f"GARDENA {device.model_definition.name}",
+            manufacturer=device.manufacturer,
+            model=device.model_definition.name,
+            model_id=device.model_definition.model_number,
+            sw_version=device.software_version,
+            hw_version=device.hardware_version,
+            serial_number=device.serial_number,
         )
 
     @property

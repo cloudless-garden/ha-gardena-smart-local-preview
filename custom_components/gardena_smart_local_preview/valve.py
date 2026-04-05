@@ -41,6 +41,8 @@ async def async_setup_entry(
 
 
 class GardenaValve(CoordinatorEntity[GardenaSmartLocalCoordinator], ValveEntity):
+    _attr_has_entity_name = True
+
     def __init__(
         self,
         coordinator: GardenaSmartLocalCoordinator,
@@ -49,7 +51,7 @@ class GardenaValve(CoordinatorEntity[GardenaSmartLocalCoordinator], ValveEntity)
         super().__init__(coordinator)
         self._device = device
         self._attr_unique_id = f"{device.id}_valve"
-        self._attr_name = f"GARDENA {device.model_definition.name}"
+        self._attr_name = None
         self._attr_reports_position = False
         self._attr_supported_features = (
             ValveEntityFeature.OPEN | ValveEntityFeature.CLOSE
@@ -57,7 +59,7 @@ class GardenaValve(CoordinatorEntity[GardenaSmartLocalCoordinator], ValveEntity)
 
         self._attr_device_info = dr.DeviceInfo(
             identifiers={(DOMAIN, device.id)},
-            name=self._attr_name,
+            name=f"GARDENA {device.model_definition.name}",
             manufacturer=device.manufacturer,
             model=device.model_definition.name,
             model_id=device.model_definition.model_number,
