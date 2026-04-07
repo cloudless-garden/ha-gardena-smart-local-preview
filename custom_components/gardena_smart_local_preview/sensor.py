@@ -10,12 +10,11 @@ from homeassistant.components.sensor import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import LIGHT_LUX, PERCENTAGE, EntityCategory, UnitOfTemperature
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .coordinator import GardenaSmartLocalCoordinator
+from .entity import GardenaEntity
 from gardena_smart_local_api.devices.device import Device
 
 _LOGGER = logging.getLogger(__name__)
@@ -81,41 +80,18 @@ async def async_setup_entry(
     coordinator.async_add_listener(_add_new_devices)
 
 
-class GardenaTemperatureSensor(
-    CoordinatorEntity[GardenaSmartLocalCoordinator], SensorEntity
-):
-    _attr_has_entity_name = True
-
+class GardenaTemperatureSensor(GardenaEntity, SensorEntity):
     def __init__(
         self,
         coordinator: GardenaSmartLocalCoordinator,
         device: Device,
     ) -> None:
-        super().__init__(coordinator)
-        self._device = device
+        super().__init__(coordinator, device)
         self._attr_unique_id = f"{device.id}_temperature"
         self._attr_name = "Temperature"
         self._attr_device_class = SensorDeviceClass.TEMPERATURE
         self._attr_state_class = SensorStateClass.MEASUREMENT
         self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
-
-        self._attr_device_info = dr.DeviceInfo(
-            identifiers={(DOMAIN, device.id)},
-            name=f"GARDENA {device.model_definition.name} {device.serial_number}",
-            manufacturer=device.manufacturer,
-            model=device.model_definition.name,
-            model_id=device.model_definition.model_number,
-            sw_version=device.software_version,
-            hw_version=device.hardware_version,
-            serial_number=device.serial_number,
-        )
-
-    @property
-    def available(self) -> bool:
-        device = self.coordinator.data.get(self._device.id)
-        if not device:
-            return False
-        return device.is_online
 
     @property
     def native_value(self) -> float | None:
@@ -126,41 +102,18 @@ class GardenaTemperatureSensor(
         return float(temp) if temp is not None else None
 
 
-class GardenaSoilMoistureSensor(
-    CoordinatorEntity[GardenaSmartLocalCoordinator], SensorEntity
-):
-    _attr_has_entity_name = True
-
+class GardenaSoilMoistureSensor(GardenaEntity, SensorEntity):
     def __init__(
         self,
         coordinator: GardenaSmartLocalCoordinator,
         device: Device,
     ) -> None:
-        super().__init__(coordinator)
-        self._device = device
+        super().__init__(coordinator, device)
         self._attr_unique_id = f"{device.id}_soil_moisture"
         self._attr_name = "Soil Moisture"
         self._attr_device_class = SensorDeviceClass.MOISTURE
         self._attr_state_class = SensorStateClass.MEASUREMENT
         self._attr_native_unit_of_measurement = PERCENTAGE
-
-        self._attr_device_info = dr.DeviceInfo(
-            identifiers={(DOMAIN, device.id)},
-            name=f"GARDENA {device.model_definition.name} {device.serial_number}",
-            manufacturer=device.manufacturer,
-            model=device.model_definition.name,
-            model_id=device.model_definition.model_number,
-            sw_version=device.software_version,
-            hw_version=device.hardware_version,
-            serial_number=device.serial_number,
-        )
-
-    @property
-    def available(self) -> bool:
-        device = self.coordinator.data.get(self._device.id)
-        if not device:
-            return False
-        return device.is_online
 
     @property
     def native_value(self) -> float | None:
@@ -171,39 +124,18 @@ class GardenaSoilMoistureSensor(
         return float(moisture) if moisture is not None else None
 
 
-class GardenaLightSensor(CoordinatorEntity[GardenaSmartLocalCoordinator], SensorEntity):
-    _attr_has_entity_name = True
-
+class GardenaLightSensor(GardenaEntity, SensorEntity):
     def __init__(
         self,
         coordinator: GardenaSmartLocalCoordinator,
         device: Device,
     ) -> None:
-        super().__init__(coordinator)
-        self._device = device
+        super().__init__(coordinator, device)
         self._attr_unique_id = f"{device.id}_light"
         self._attr_name = "Light"
         self._attr_device_class = SensorDeviceClass.ILLUMINANCE
         self._attr_state_class = SensorStateClass.MEASUREMENT
         self._attr_native_unit_of_measurement = LIGHT_LUX
-
-        self._attr_device_info = dr.DeviceInfo(
-            identifiers={(DOMAIN, device.id)},
-            name=f"GARDENA {device.model_definition.name} {device.serial_number}",
-            manufacturer=device.manufacturer,
-            model=device.model_definition.name,
-            model_id=device.model_definition.model_number,
-            sw_version=device.software_version,
-            hw_version=device.hardware_version,
-            serial_number=device.serial_number,
-        )
-
-    @property
-    def available(self) -> bool:
-        device = self.coordinator.data.get(self._device.id)
-        if not device:
-            return False
-        return device.is_online
 
     @property
     def native_value(self) -> float | None:
@@ -214,41 +146,18 @@ class GardenaLightSensor(CoordinatorEntity[GardenaSmartLocalCoordinator], Sensor
         return float(lux) if lux is not None else None
 
 
-class GardenaBatterySensor(
-    CoordinatorEntity[GardenaSmartLocalCoordinator], SensorEntity
-):
-    _attr_has_entity_name = True
-
+class GardenaBatterySensor(GardenaEntity, SensorEntity):
     def __init__(
         self,
         coordinator: GardenaSmartLocalCoordinator,
         device: Device,
     ) -> None:
-        super().__init__(coordinator)
-        self._device = device
+        super().__init__(coordinator, device)
         self._attr_unique_id = f"{device.id}_battery"
         self._attr_name = "Battery"
         self._attr_device_class = SensorDeviceClass.BATTERY
         self._attr_state_class = SensorStateClass.MEASUREMENT
         self._attr_native_unit_of_measurement = PERCENTAGE
-
-        self._attr_device_info = dr.DeviceInfo(
-            identifiers={(DOMAIN, device.id)},
-            name=f"GARDENA {device.model_definition.name} {device.serial_number}",
-            manufacturer=device.manufacturer,
-            model=device.model_definition.name,
-            model_id=device.model_definition.model_number,
-            sw_version=device.software_version,
-            hw_version=device.hardware_version,
-            serial_number=device.serial_number,
-        )
-
-    @property
-    def available(self) -> bool:
-        device = self.coordinator.data.get(self._device.id)
-        if not device:
-            return False
-        return device.is_online
 
     @property
     def native_value(self) -> float | None:
@@ -259,41 +168,18 @@ class GardenaBatterySensor(
         return float(level) if level is not None else None
 
 
-class GardenaRfLinkQualitySensor(
-    CoordinatorEntity[GardenaSmartLocalCoordinator], SensorEntity
-):
-    _attr_has_entity_name = True
-
+class GardenaRfLinkQualitySensor(GardenaEntity, SensorEntity):
     def __init__(
         self,
         coordinator: GardenaSmartLocalCoordinator,
         device: Device,
     ) -> None:
-        super().__init__(coordinator)
-        self._device = device
+        super().__init__(coordinator, device)
         self._attr_unique_id = f"{device.id}_rf_link_quality"
         self._attr_name = "RF Link Quality"
         self._attr_state_class = SensorStateClass.MEASUREMENT
         self._attr_native_unit_of_measurement = PERCENTAGE
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
-
-        self._attr_device_info = dr.DeviceInfo(
-            identifiers={(DOMAIN, device.id)},
-            name=f"GARDENA {device.model_definition.name} {device.serial_number}",
-            manufacturer=device.manufacturer,
-            model=device.model_definition.name,
-            model_id=device.model_definition.model_number,
-            sw_version=device.software_version,
-            hw_version=device.hardware_version,
-            serial_number=device.serial_number,
-        )
-
-    @property
-    def available(self) -> bool:
-        device = self.coordinator.data.get(self._device.id)
-        if not device:
-            return False
-        return device.is_online
 
     @property
     def native_value(self) -> int | None:

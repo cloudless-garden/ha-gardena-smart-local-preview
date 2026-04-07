@@ -6,12 +6,11 @@ from typing import Any
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .coordinator import GardenaSmartLocalCoordinator
+from .entity import GardenaEntity
 from gardena_smart_local_api.devices import PowerAdapter
 
 _LOGGER = logging.getLogger(__name__)
@@ -43,36 +42,15 @@ async def async_setup_entry(
     coordinator.async_add_listener(_add_new_devices)
 
 
-class GardenaPowerSwitch(CoordinatorEntity[GardenaSmartLocalCoordinator], SwitchEntity):
-    _attr_has_entity_name = True
-
+class GardenaPowerSwitch(GardenaEntity, SwitchEntity):
     def __init__(
         self,
         coordinator: GardenaSmartLocalCoordinator,
         device: PowerAdapter,
     ) -> None:
-        super().__init__(coordinator)
-        self._device = device
+        super().__init__(coordinator, device)
         self._attr_unique_id = f"{device.id}_switch"
         self._attr_name = None
-
-        self._attr_device_info = dr.DeviceInfo(
-            identifiers={(DOMAIN, device.id)},
-            name=f"GARDENA {device.model_definition.name} {device.serial_number}",
-            manufacturer=device.manufacturer,
-            model=device.model_definition.name,
-            model_id=device.model_definition.model_number,
-            sw_version=device.software_version,
-            hw_version=device.hardware_version,
-            serial_number=device.serial_number,
-        )
-
-    @property
-    def available(self) -> bool:
-        device = self.coordinator.data.get(self._device.id)
-        if not device:
-            return False
-        return device.is_online
 
     @property
     def is_on(self) -> bool | None:
