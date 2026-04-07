@@ -177,6 +177,7 @@ class GardenaRfLinkQualitySensor(GardenaEntity, SensorEntity):
         super().__init__(coordinator, device)
         self._attr_unique_id = f"{device.id}_rf_link_quality"
         self._attr_name = "RF Link Quality"
+        self._attr_icon = "mdi:signal"
         self._attr_state_class = SensorStateClass.MEASUREMENT
         self._attr_native_unit_of_measurement = PERCENTAGE
         self._attr_entity_category = EntityCategory.DIAGNOSTIC

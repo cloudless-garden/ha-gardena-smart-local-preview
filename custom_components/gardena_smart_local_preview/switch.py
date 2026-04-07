@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from homeassistant.components.switch import SwitchEntity
+from homeassistant.components.switch import SwitchDeviceClass, SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -51,6 +51,7 @@ class GardenaPowerSwitch(GardenaEntity, SwitchEntity):
         super().__init__(coordinator, device)
         self._attr_unique_id = f"{device.id}_switch"
         self._attr_name = None
+        self._attr_device_class = SwitchDeviceClass.OUTLET
 
     @property
     def is_on(self) -> bool | None:
