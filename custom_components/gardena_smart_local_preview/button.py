@@ -46,6 +46,7 @@ class GardenaIdentifyButton(GardenaEntity, ButtonEntity):
         super().__init__(coordinator, device)
         self._attr_unique_id = f"{device.id}_identify"
         self._attr_name = "Identify"
+        self._attr_icon = "mdi:crosshairs-gps"
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
     async def async_press(self) -> None:

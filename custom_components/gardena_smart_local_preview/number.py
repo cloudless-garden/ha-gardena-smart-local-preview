@@ -60,6 +60,7 @@ class GardenaButtonConfigTime(GardenaEntity, NumberEntity):
         super().__init__(coordinator, device)
         self._attr_unique_id = f"{device.id}_button_config_time"
         self._attr_name = "Button Time"
+        self._attr_icon = "mdi:timer-outline"
 
     @property
     def native_value(self) -> float | None:
