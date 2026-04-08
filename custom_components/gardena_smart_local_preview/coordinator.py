@@ -48,6 +48,8 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
         self._task = None
         self._devices: DeviceMap = DeviceMap({})
         self._ssl_context = None
+        self._msg_queue: asyncio.Queue[str] = asyncio.Queue()
+        self._pending_replies: dict[str, asyncio.Future[Reply]] = {}
 
     async def _async_update_data(self) -> DeviceMap:
         return self._devices
@@ -69,6 +71,8 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
 
     async def _ws_loop(self) -> None:
         while True:
+            reader_task = None
+            consumer_task = None
             try:
                 async with aiohttp.ClientSession() as session:
                     async with session.ws_connect(
@@ -81,56 +85,99 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
                             "Connected to GARDENA local gateway at %s", self.uri
                         )
 
-                        # Request device list immediately on connection
-                        await self._request_devices()
+                        reader_task = self.hass.async_create_background_task(
+                            self._ws_reader(ws),
+                            "gardena_smart_local_preview_ws_reader",
+                        )
+                        consumer_task = self.hass.async_create_background_task(
+                            self._msg_consumer(),
+                            "gardena_smart_local_preview_msg_consumer",
+                        )
 
-                        # Listen for messages
-                        async for msg in ws:
-                            if msg.type == aiohttp.WSMsgType.TEXT:
-                                await self._handle_message(msg.data)
-                            elif msg.type == aiohttp.WSMsgType.BINARY:
-                                await self._handle_message(msg.data.decode("utf-8"))
-                            elif msg.type == aiohttp.WSMsgType.ERROR:
-                                _LOGGER.error("WebSocket error: %s", ws.exception())
-                                break
-                            elif msg.type in (
-                                aiohttp.WSMsgType.CLOSED,
-                                aiohttp.WSMsgType.CLOSING,
-                            ):
-                                break
+                        await self._do_discovery()
+
+                        # Block until the reader exits (disconnect / error)
+                        await reader_task
 
             except asyncio.CancelledError:
                 _LOGGER.debug("WebSocket loop cancelled")
                 break
             except Exception as err:
-                # Log the error but keep retrying indefinitely with a delay
                 _LOGGER.error("WebSocket error: %s", err)
                 await asyncio.sleep(5)
+            finally:
+                self._ws = None
+                for task in (reader_task, consumer_task):
+                    if task and not task.done():
+                        task.cancel()
+                        try:
+                            await task
+                        except (asyncio.CancelledError, Exception):
+                            pass
+                # Cancel any pending reply futures so waiters don't hang
+                for fut in self._pending_replies.values():
+                    if not fut.done():
+                        fut.cancel()
+                self._pending_replies.clear()
 
-    async def _request_devices(self) -> None:
-        if not self._ws:
-            return
+    async def _ws_reader(self, ws: aiohttp.ClientWebSocketResponse) -> None:
+        async for msg in ws:
+            match msg.type:
+                case aiohttp.WSMsgType.TEXT:
+                    await self._msg_queue.put(msg.data)
+                case aiohttp.WSMsgType.BINARY:
+                    await self._msg_queue.put(msg.data.decode("utf-8"))
+                case aiohttp.WSMsgType.ERROR:
+                    _LOGGER.error("WebSocket error: %s", ws.exception())
+                    break
+                case aiohttp.WSMsgType.CLOSED | aiohttp.WSMsgType.CLOSING:
+                    break
 
-        request = build_discovery_obj()
-        await self._ws.send_str(str(request))
-        _LOGGER.debug("Requested device list: %s", request)
-
-    async def _handle_message(self, ws_message: str) -> None:
-        try:
-            _LOGGER.debug("Received WebSocket message: %s", ws_message)
-
+    async def _msg_consumer(self) -> None:
+        while True:
+            raw = await self._msg_queue.get()
             try:
-                messages = IngressMessageList.model_validate_json(ws_message)
+                messages = IngressMessageList.model_validate_json(raw)
             except Exception:
-                _LOGGER.debug("Ignoring non-list message from gateway: %s", ws_message)
-                return
+                _LOGGER.debug("Ignoring non-list message from gateway: %s", raw)
+                continue
+
+            passthrough: IngressMessageList = IngressMessageList([])
+            for msg in messages:
+                if isinstance(msg, Reply) and msg.request_id in self._pending_replies:
+                    fut = self._pending_replies.pop(msg.request_id)
+                    if not fut.done():
+                        fut.set_result(msg)
+                else:
+                    passthrough.append(msg)
+
+            if passthrough:
+                await self._handle_messages(passthrough)
+
+    async def _do_discovery(self) -> None:
+        discovery = build_discovery_obj()
+        n = len(list(discovery))
+        _LOGGER.debug("Sent discovery request, awaiting %d replies", n)
+
+        try:
+            replies = await self.send_request(
+                "discovery", discovery, wait_for_response_sec=30
+            )
+        except asyncio.TimeoutError:
+            raise RuntimeError(
+                f"Timed out waiting for discovery replies (expected {n})"
+            )
+
+        devices = await create_devices_from_messages(replies)
+        self._update_devices(devices)
+        self.async_set_updated_data(self._devices)
+        _LOGGER.info("Discovery complete, found %d device(s)", len(self._devices))
+
+    async def _handle_messages(self, messages: IngressMessageList) -> None:
+        try:
+            _LOGGER.debug("Handling %d message(s)", len(messages))
 
             updated = False
-
-            if any(isinstance(msg, Reply) for msg in messages):
-                devices = await create_devices_from_messages(messages)
-                self._update_devices(devices)
-                updated = True
 
             for msg in messages:
                 if isinstance(msg, Event):
@@ -153,11 +200,7 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
                 self.async_set_updated_data(self._devices)
 
         except Exception as err:
-            _LOGGER.warning(
-                "Error handling message (may be non-critical): %s - Message: %s",
-                err,
-                ws_message,
-            )
+            _LOGGER.warning("Error handling messages (may be non-critical): %s", err)
 
     def _update_device(self, device: Device) -> None:
         is_new = device.id not in self._devices
@@ -180,10 +223,39 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
         except Exception as err:
             _LOGGER.warning("Failed to update devices: %s", err)
 
-    async def send_request(self, device_id: str, request: EgressMessageList) -> None:
+    async def send_request(
+        self,
+        device_id: str,
+        request: EgressMessageList,
+        wait_for_response_sec: float = 0,
+    ) -> IngressMessageList:
         if not self._ws:
             _LOGGER.error("WebSocket not connected")
-            return
+            return IngressMessageList([])
+
+        if wait_for_response_sec > 0:
+            loop = asyncio.get_running_loop()
+            pending_ids = {
+                req.request_id for req in request.root if req.request_id is not None
+            }
+            futures: dict[str, asyncio.Future[Reply]] = {
+                rid: loop.create_future() for rid in pending_ids
+            }
+            self._pending_replies.update(futures)
+
+            await self._ws.send_str(request.model_dump_json())
+            _LOGGER.debug("Sent request to device %s: %s", device_id, request)
+
+            try:
+                async with asyncio.timeout(wait_for_response_sec):
+                    replies = await asyncio.gather(*futures.values())
+            except asyncio.TimeoutError:
+                for rid in pending_ids:
+                    self._pending_replies.pop(rid, None)
+                raise
+
+            return IngressMessageList(list(replies))
 
         await self._ws.send_str(request.model_dump_json())
         _LOGGER.debug("Sent request to device %s: %s", device_id, request)
+        return IngressMessageList([])
