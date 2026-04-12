@@ -11,7 +11,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import DOMAIN
 from .coordinator import GardenaSmartLocalCoordinator
 from .entity import GardenaEntity
-from gardena_smart_local_api.devices import PowerAdapter
+from gardena_smart_local_api.devices import PowerAdapter, Pump
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -36,6 +36,10 @@ async def async_setup_entry(
                 known_devices.add(device.id)
                 new_entities.append(GardenaPowerSwitch(coordinator, device))
                 _LOGGER.info("Adding new switch entity for device %s", device.id)
+            elif isinstance(device, Pump) and device.id not in known_devices:
+                known_devices.add(device.id)
+                new_entities.append(GardenaPumpSwitch(coordinator, device))
+                _LOGGER.info("Adding new pump switch entity for device %s", device.id)
         if new_entities:
             async_add_entities(new_entities)
 
@@ -73,3 +77,35 @@ class GardenaPowerSwitch(GardenaEntity, SwitchEntity):
             self._device.build_disable_output_obj(),
         )
         _LOGGER.info("Turning off switch %s", self._device.id)
+
+
+class GardenaPumpSwitch(GardenaEntity, SwitchEntity):
+    def __init__(
+        self,
+        coordinator: GardenaSmartLocalCoordinator,
+        device: Pump,
+    ) -> None:
+        super().__init__(coordinator, device)
+        self._attr_unique_id = f"{device.id}_switch"
+        self._attr_name = None
+
+    @property
+    def is_on(self) -> bool | None:
+        device = self.coordinator.data.get(self._device.id)
+        if not device:
+            return None
+        return device.is_running
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        await self.coordinator.send_request(
+            self._device.id,
+            self._device.build_set_watering_timer_obj(DEFAULT_ON_DURATION_SECONDS),
+        )
+        _LOGGER.info("Turning on pump %s", self._device.id)
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        await self.coordinator.send_request(
+            self._device.id,
+            self._device.build_stop_obj(),
+        )
+        _LOGGER.info("Turning off pump %s", self._device.id)

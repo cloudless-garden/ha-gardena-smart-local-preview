@@ -8,7 +8,15 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import LIGHT_LUX, PERCENTAGE, EntityCategory, UnitOfTemperature
+from homeassistant.const import (
+    LIGHT_LUX,
+    PERCENTAGE,
+    EntityCategory,
+    UnitOfTemperature,
+    UnitOfPressure,
+    UnitOfVolumeFlowRate,
+    UnitOfVolume,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
@@ -16,6 +24,7 @@ from .const import DOMAIN
 from .coordinator import GardenaSmartLocalCoordinator
 from .entity import GardenaEntity
 from gardena_smart_local_api.devices.device import Device
+from gardena_smart_local_api.devices import Pump
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -31,6 +40,7 @@ async def async_setup_entry(
     known_light_devices: set[str] = set()
     known_battery_devices: set[str] = set()
     known_rf_link_devices: set[str] = set()
+    known_pump_devices: set[str] = set()
 
     def _add_new_devices() -> None:
         if not coordinator.data:
@@ -74,6 +84,19 @@ async def async_setup_entry(
                 _LOGGER.info(
                     "Adding new RF link quality sensor entity for device %s", device.id
                 )
+            if isinstance(device, Pump) and device.id not in known_pump_devices:
+                known_pump_devices.add(device.id)
+                new_entities.extend(
+                    [
+                        GardenaPumpPressureSensor(coordinator, device),
+                        GardenaPumpTemperatureSensor(coordinator, device),
+                        GardenaPumpFlowRateSensor(coordinator, device),
+                        GardenaPumpFlowTotalSensor(coordinator, device),
+                        GardenaPumpFlowSinceResetSensor(coordinator, device),
+                        GardenaPumpStateSensor(coordinator, device),
+                    ]
+                )
+                _LOGGER.info("Adding new pump sensor entities for device %s", device.id)
         if new_entities:
             async_add_entities(new_entities)
 
@@ -188,3 +211,132 @@ class GardenaRfLinkQualitySensor(GardenaEntity, SensorEntity):
         if not device:
             return None
         return device.rf_link_quality
+
+
+class GardenaPumpPressureSensor(GardenaEntity, SensorEntity):
+    def __init__(
+        self,
+        coordinator: GardenaSmartLocalCoordinator,
+        device: Pump,
+    ) -> None:
+        super().__init__(coordinator, device)
+        self._attr_unique_id = f"{device.id}_outlet_pressure"
+        self._attr_name = "Outlet Pressure"
+        self._attr_device_class = SensorDeviceClass.PRESSURE
+        self._attr_state_class = SensorStateClass.MEASUREMENT
+        self._attr_native_unit_of_measurement = UnitOfPressure.BAR
+
+    @property
+    def native_value(self) -> float | None:
+        device = self.coordinator.data.get(self._device.id)
+        if not device:
+            return None
+        return device.outlet_pressure
+
+
+class GardenaPumpTemperatureSensor(GardenaEntity, SensorEntity):
+    def __init__(
+        self,
+        coordinator: GardenaSmartLocalCoordinator,
+        device: Pump,
+    ) -> None:
+        super().__init__(coordinator, device)
+        self._attr_unique_id = f"{device.id}_outlet_temperature"
+        self._attr_name = "Outlet Temperature"
+        self._attr_device_class = SensorDeviceClass.TEMPERATURE
+        self._attr_state_class = SensorStateClass.MEASUREMENT
+        self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
+
+    @property
+    def native_value(self) -> float | None:
+        device = self.coordinator.data.get(self._device.id)
+        if not device:
+            return None
+        temp = device.outlet_temperature
+        return float(temp) if temp is not None else None
+
+
+class GardenaPumpFlowRateSensor(GardenaEntity, SensorEntity):
+    def __init__(
+        self,
+        coordinator: GardenaSmartLocalCoordinator,
+        device: Pump,
+    ) -> None:
+        super().__init__(coordinator, device)
+        self._attr_unique_id = f"{device.id}_flow_rate"
+        self._attr_name = "Flow Rate"
+        self._attr_device_class = SensorDeviceClass.VOLUME_FLOW_RATE
+        self._attr_state_class = SensorStateClass.MEASUREMENT
+        self._attr_native_unit_of_measurement = UnitOfVolumeFlowRate.LITERS_PER_HOUR
+
+    @property
+    def native_value(self) -> float | None:
+        device = self.coordinator.data.get(self._device.id)
+        if not device:
+            return None
+        rate = device.flow_rate
+        return float(rate) if rate is not None else None
+
+
+class GardenaPumpFlowTotalSensor(GardenaEntity, SensorEntity):
+    def __init__(
+        self,
+        coordinator: GardenaSmartLocalCoordinator,
+        device: Pump,
+    ) -> None:
+        super().__init__(coordinator, device)
+        self._attr_unique_id = f"{device.id}_flow_total"
+        self._attr_name = "Total Flow"
+        self._attr_device_class = SensorDeviceClass.WATER
+        self._attr_state_class = SensorStateClass.TOTAL_INCREASING
+        self._attr_native_unit_of_measurement = UnitOfVolume.CUBIC_METERS
+
+    @property
+    def native_value(self) -> float | None:
+        device = self.coordinator.data.get(self._device.id)
+        if not device:
+            return None
+        total = device.flow_total
+        return float(total) if total is not None else None
+
+
+class GardenaPumpFlowSinceResetSensor(GardenaEntity, SensorEntity):
+    def __init__(
+        self,
+        coordinator: GardenaSmartLocalCoordinator,
+        device: Pump,
+    ) -> None:
+        super().__init__(coordinator, device)
+        self._attr_unique_id = f"{device.id}_flow_since_reset"
+        self._attr_name = "Flow Since Reset"
+        self._attr_device_class = SensorDeviceClass.WATER
+        self._attr_state_class = SensorStateClass.TOTAL_INCREASING
+        self._attr_native_unit_of_measurement = UnitOfVolume.CUBIC_METERS
+
+    @property
+    def native_value(self) -> float | None:
+        device = self.coordinator.data.get(self._device.id)
+        if not device:
+            return None
+        flow = device.flow_since_last_reset
+        return float(flow) if flow is not None else None
+
+
+class GardenaPumpStateSensor(GardenaEntity, SensorEntity):
+    def __init__(
+        self,
+        coordinator: GardenaSmartLocalCoordinator,
+        device: Pump,
+    ) -> None:
+        super().__init__(coordinator, device)
+        self._attr_unique_id = f"{device.id}_pump_state"
+        self._attr_name = "Pump State"
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    @property
+    def native_value(self) -> str | None:
+        device = self.coordinator.data.get(self._device.id)
+        if not device:
+            return None
+        state = device.pump_state
+        return str(state) if state is not None else None
