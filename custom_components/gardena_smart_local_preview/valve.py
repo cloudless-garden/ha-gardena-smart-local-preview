@@ -11,7 +11,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import DOMAIN
 from .coordinator import GardenaSmartLocalCoordinator
 from .entity import GardenaEntity
-from gardena_smart_local_api.devices import Gen1WaterControl
+from gardena_smart_local_api.devices import Device
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -29,10 +29,15 @@ async def async_setup_entry(
             return
         new_entities = []
         for device in coordinator.data.values():
-            if isinstance(device, Gen1WaterControl) and device.id not in known_devices:
+            if device.id not in known_devices and hasattr(device, "valve_ids"):
                 known_devices.add(device.id)
-                new_entities.append(GardenaValve(coordinator, device))
-                _LOGGER.info("Adding new valve entity for device %s", device.id)
+                for valve_id in device.valve_ids:
+                    new_entities.append(GardenaValve(coordinator, device, valve_id))
+                    _LOGGER.info(
+                        "Adding new valve entity for device %s, valve %s",
+                        device.id,
+                        valve_id,
+                    )
         if new_entities:
             async_add_entities(new_entities)
 
@@ -43,11 +48,13 @@ class GardenaValve(GardenaEntity, ValveEntity):
     def __init__(
         self,
         coordinator: GardenaSmartLocalCoordinator,
-        device: Gen1WaterControl,
+        device: Device,
+        valve_id: int = 0,
     ) -> None:
         super().__init__(coordinator, device)
-        self._attr_unique_id = f"{device.id}_valve"
-        self._attr_name = None
+        self._valve_id = valve_id
+        self._attr_unique_id = f"{device.id}_valve_{valve_id}"
+        self._attr_name = f"Valve {valve_id + 1}" if len(device.valve_ids) > 1 else None
         self._attr_reports_position = False
         self._attr_supported_features = (
             ValveEntityFeature.OPEN | ValveEntityFeature.CLOSE
@@ -58,10 +65,11 @@ class GardenaValve(GardenaEntity, ValveEntity):
         device = self.coordinator.data.get(self._device.id)
         if not device:
             return None
-        is_opened = device.is_valve_open(0)
+        is_opened = device.is_valve_open(self._valve_id)
         _LOGGER.debug(
-            "Valve %s is_opened=%s, returning is_closed=%s",
+            "Valve %s valve_id=%s, is_opened=%s, returning is_closed=%s",
             self._device.id,
+            self._valve_id,
             is_opened,
             not is_opened,
         )
@@ -72,13 +80,13 @@ class GardenaValve(GardenaEntity, ValveEntity):
     async def async_open_valve(self, **kwargs: Any) -> None:
         await self.coordinator.send_request(
             self._device.id,
-            self._device.build_open_valve_obj(0, 1800),
+            self._device.build_open_valve_obj(self._valve_id, 1800),
         )
-        _LOGGER.info("Opening valve %s", self._device.id)
+        _LOGGER.info("Opening valve %s valve_id=%s", self._device.id, self._valve_id)
 
     async def async_close_valve(self, **kwargs: Any) -> None:
         await self.coordinator.send_request(
             self._device.id,
-            self._device.build_close_valve_obj(0),
+            self._device.build_close_valve_obj(self._valve_id),
         )
-        _LOGGER.info("Closing valve %s", self._device.id)
+        _LOGGER.info("Closing valve %s valve_id=%s", self._device.id, self._valve_id)
