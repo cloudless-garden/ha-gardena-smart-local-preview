@@ -6,6 +6,10 @@
 # OS
 .DS_Store
 
+# Playwright
+.playwright*/
+screenshot*.png
+
 # Python
 *.pyc
 .ruff_cache/
