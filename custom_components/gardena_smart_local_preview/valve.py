@@ -58,12 +58,10 @@ class GardenaValve(GardenaEntity, ValveEntity):
         device = self.coordinator.data.get(self._device.id)
         if not device:
             return None
-        watering_timer = device.get_watering_timer(0)
         is_opened = device.is_valve_open(0)
         _LOGGER.debug(
-            "Valve %s watering_timer=%s, is_opened=%s, returning is_closed=%s",
+            "Valve %s is_opened=%s, returning is_closed=%s",
             self._device.id,
-            watering_timer,
             is_opened,
             not is_opened,
         )
