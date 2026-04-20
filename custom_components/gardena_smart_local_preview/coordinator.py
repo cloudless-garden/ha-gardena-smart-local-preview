@@ -24,6 +24,7 @@ from gardena_smart_local_api.messages import (
 from gardena_smart_local_api.sgtin96 import parse_sgtin96
 
 INCLUDE_REPLY_TIMEOUT = 10
+EXCLUDE_REPLY_TIMEOUT = 10
 INCLUDABLE_DEVICE_HEARTBEAT_TIMEOUT = 25
 
 
@@ -321,6 +322,32 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
 
         _LOGGER.error("Inclusion of device %s failed", instance_id)
         return None
+
+    async def async_exclude_device(self, device_id: str) -> bool:
+        device = self._devices.get(device_id)
+        if device is None:
+            _LOGGER.error("No device with id %s", device_id)
+            return False
+
+        request = device.build_exclusion_device_obj()
+        try:
+            replies = await self.send_request(
+                device_id, request, wait_for_response_sec=EXCLUDE_REPLY_TIMEOUT
+            )
+        except asyncio.TimeoutError:
+            _LOGGER.error("Timeout waiting for exclusion reply for %s", device_id)
+            return False
+        except Exception as err:
+            _LOGGER.error("Error excluding device %s: %s", device_id, err)
+            return False
+
+        for msg in replies:
+            if isinstance(msg, Reply) and msg.success:
+                _LOGGER.info("Device %s excluded successfully", device_id)
+                return True
+
+        _LOGGER.error("Exclusion of device %s failed", device_id)
+        return False
 
     def _update_device(self, device: Device) -> None:
         is_new = device.id not in self._devices
