@@ -8,7 +8,7 @@ import logging
 from dataclasses import dataclass
 
 import aiohttp
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util.ssl import get_default_no_verify_context
 
@@ -25,9 +25,10 @@ from gardena_smart_local_api.messages import (
     EgressMessageList,
     IngressMessageList,
 )
-from gardena_smart_local_api.sgtin96 import parse_sgtin96
+from gardena_smart_local_api.sgtin96 import SGTIN96Info
 
 INCLUDE_REPLY_TIMEOUT = 10
+EXCLUDE_REPLY_TIMEOUT = 10
 INCLUDABLE_DEVICE_HEARTBEAT_TIMEOUT = 25
 INCLUSION_TIMEOUT = 20
 
@@ -36,6 +37,7 @@ INCLUSION_TIMEOUT = 20
 class IncludableDeviceInfo:
     instance_id: str
     service: str
+    device_id: str
     device_name: str
 
 
@@ -211,7 +213,14 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
                         await self._handle_includable_event(msg)
                     elif msg.entity.device:
                         device_id = msg.entity.device
-                        if device_id in self._devices:
+                        if (
+                            msg.op == "delete"
+                            and msg.entity.path.object_name is None
+                            and device_id in self._devices
+                        ):
+                            _LOGGER.info("Device %s removed (delete event)", device_id)
+                            self.async_drop_device(device_id)
+                        elif device_id in self._devices:
                             _LOGGER.debug(
                                 "Updating device %s with event: %s",
                                 device_id,
@@ -266,19 +275,35 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
         if service is None:
             return
 
-        identifier = event.payload.get("identifier", {}).get("vs", instance_id)
+        identifier = event.payload.get("identifier", {}).get("vs")
+        if identifier is None:
+            _LOGGER.debug(
+                "Includable event for %s lacks identifier, ignoring", instance_id
+            )
+            return
         try:
-            sgtin = parse_sgtin96(identifier)
-            device_name = f"{await sgtin.get_model_name()} {sgtin.serial:08d}"
+            sgtin = SGTIN96Info.from_hex(identifier)
         except ValueError:
-            device_name = identifier
+            _LOGGER.debug(
+                "Includable device %s has unparseable identifier %s, ignoring",
+                instance_id,
+                identifier,
+            )
+            return
+        device_name = f"{await sgtin.get_model_name()} {sgtin.serial:08d}"
 
         self._includable_devices[instance_id] = IncludableDeviceInfo(
             instance_id=instance_id,
             service=service,
+            device_id=identifier,
             device_name=device_name,
         )
-        _LOGGER.info("Discovered includable device: %s (%s)", instance_id, device_name)
+        _LOGGER.info(
+            "Discovered includable device: %s (%s, instance %s)",
+            identifier,
+            device_name,
+            instance_id,
+        )
 
     @property
     def includable_devices(self) -> dict[str, IncludableDeviceInfo]:
@@ -289,6 +314,7 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
         if info is None:
             _LOGGER.error("No includable device with instance_id %s", instance_id)
             return None
+        device_id = info.device_id
 
         request = build_inclusion_obj(info.service, instance_id)
         try:
@@ -296,7 +322,7 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
                 instance_id, request, wait_for_response_sec=INCLUDE_REPLY_TIMEOUT
             )
         except asyncio.TimeoutError:
-            _LOGGER.error("Timeout waiting for inclusion reply for %s", instance_id)
+            _LOGGER.error("Timeout waiting for inclusion reply for %s", device_id)
             return None
         except Exception as err:
             _LOGGER.error("Error including device %s: %s", instance_id, err)
@@ -310,11 +336,14 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
                     await asyncio.sleep(1)
                 else:
                     _LOGGER.error(
-                        "Timeout waiting for inclusion to complete for %s", instance_id
+                        "Timeout waiting for inclusion to complete for %s", device_id
                     )
                     return None
-                _LOGGER.info("Device %s included successfully", instance_id)
-                known_ids = set(self._devices.keys())
+                _LOGGER.info(
+                    "Device %s (instance %s) included successfully",
+                    info.device_id,
+                    instance_id,
+                )
                 try:
                     # broadcast=False: the subentry doesn't exist yet at this
                     # point; the caller schedules async_set_updated_data as a
@@ -323,18 +352,51 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
                 except Exception as err:
                     _LOGGER.warning("Re-discovery after inclusion failed: %s", err)
                     return None
-                new_ids = set(self._devices.keys()) - known_ids
-                if not new_ids:
+                if info.device_id not in self._devices:
                     _LOGGER.warning(
-                        "Included device %s not found in discovery", instance_id
+                        "Included device %s not found in discovery", info.device_id
                     )
                     return None
-                device_id = next(iter(new_ids))
-                _LOGGER.info("Included device_id: %s", device_id)
-                return device_id
+                return info.device_id
 
-        _LOGGER.error("Inclusion of device %s failed", instance_id)
+        _LOGGER.error("Inclusion of device %s failed", info.device_id)
         return None
+
+    @callback
+    def async_drop_device(self, device_id: str) -> None:
+        if self._devices.pop(device_id, None) is not None:
+            _LOGGER.debug("Dropped device %s from coordinator", device_id)
+            self.async_set_updated_data(self._devices)
+
+    async def async_exclude_device(self, device_id: str) -> bool:
+        device = self._devices.get(device_id)
+        if device is None:
+            _LOGGER.error("No device with id %s", device_id)
+            return False
+
+        request = device.build_exclusion_obj()
+        # Drop the device locally before requesting exclusion so the inbound
+        # delete event during factory reset cannot resurrect it via
+        # downstream listeners (e.g. subentry auto-creation).
+        self.async_drop_device(device_id)
+        try:
+            replies = await self.send_request(
+                device_id, request, wait_for_response_sec=EXCLUDE_REPLY_TIMEOUT
+            )
+        except asyncio.TimeoutError:
+            _LOGGER.error("Timeout waiting for exclusion reply for %s", device_id)
+            return False
+        except Exception as err:
+            _LOGGER.error("Error excluding device %s: %s", device_id, err)
+            return False
+
+        for msg in replies:
+            if isinstance(msg, Reply) and msg.success:
+                _LOGGER.info("Device %s excluded successfully", device_id)
+                return True
+
+        _LOGGER.error("Exclusion of device %s failed", device_id)
+        return False
 
     def _update_device(self, device: Device) -> None:
         is_new = device.id not in self._devices
