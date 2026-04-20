@@ -35,6 +35,14 @@ async def async_setup_entry(
     def _add_new_devices() -> None:
         if not coordinator.data:
             return
+        for cache in (
+            known_temp_devices,
+            known_moisture_devices,
+            known_light_devices,
+            known_battery_devices,
+            known_rf_link_devices,
+        ):
+            cache.intersection_update(coordinator.data)
         entities_by_subentry_id: dict[str | None, list] = {}
         for device in coordinator.data.values():
             device_entities = []
