@@ -30,6 +30,7 @@ async def async_setup_entry(
     def _add_new_devices() -> None:
         if not coordinator.data:
             return
+        known_devices.intersection_update(coordinator.data)
         entities_by_subentry_id: dict[str | None, list] = {}
         for device in coordinator.data.values():
             if isinstance(device, PowerAdapter) and device.id not in known_devices:

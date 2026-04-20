@@ -5,11 +5,14 @@ import voluptuous as vol
 
 from homeassistant.config_entries import (
     ConfigEntry,
+    ConfigEntryChange,
     ConfigSubentry,
+    SIGNAL_CONFIG_ENTRY_CHANGED,
     SOURCE_IMPORT,
 )
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.const import (
     CONF_HOST,
     CONF_PORT,
@@ -139,6 +142,37 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await coordinator.async_disconnect()
 
     entry.async_on_unload(hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, _stop))
+
+    known_subentries: dict[str, str] = {
+        sid: se.data["device_id"]
+        for sid, se in entry.subentries.items()
+        if "device_id" in se.data
+    }
+
+    @callback
+    def _on_entry_updated(
+        change_type: ConfigEntryChange, changed_entry: ConfigEntry
+    ) -> None:
+        if (
+            change_type != ConfigEntryChange.UPDATED
+            or changed_entry.entry_id != entry.entry_id
+        ):
+            return
+        current_ids = set(entry.subentries.keys())
+        for subentry_id, device_id in list(known_subentries.items()):
+            if subentry_id not in current_ids:
+                del known_subentries[subentry_id]
+                hass.async_create_background_task(
+                    coordinator.async_exclude_device(device_id),
+                    f"gardena_exclude_{device_id}",
+                )
+        for sid, se in entry.subentries.items():
+            if sid not in known_subentries and "device_id" in se.data:
+                known_subentries[sid] = se.data["device_id"]
+
+    entry.async_on_unload(
+        async_dispatcher_connect(hass, SIGNAL_CONFIG_ENTRY_CHANGED, _on_entry_updated)
+    )
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
