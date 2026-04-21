@@ -6,11 +6,11 @@ from typing import Any
 from homeassistant.components.switch import SwitchDeviceClass, SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .const import DOMAIN
 from .coordinator import GardenaSmartLocalCoordinator
-from .entity import GardenaEntity
+from .entity import GardenaEntity, find_device_subentry_id
 from gardena_smart_local_api.devices import PowerAdapter
 
 _LOGGER = logging.getLogger(__name__)
@@ -22,7 +22,7 @@ DEFAULT_ON_DURATION_SECONDS = 16777216
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
-    async_add_entities: AddEntitiesCallback,
+    async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     coordinator: GardenaSmartLocalCoordinator = hass.data[DOMAIN][entry.entry_id]
     known_devices: set[str] = set()
@@ -30,14 +30,17 @@ async def async_setup_entry(
     def _add_new_devices() -> None:
         if not coordinator.data:
             return
-        new_entities = []
+        entities_by_subentry_id: dict[str | None, list] = {}
         for device in coordinator.data.values():
             if isinstance(device, PowerAdapter) and device.id not in known_devices:
                 known_devices.add(device.id)
-                new_entities.append(GardenaPowerSwitch(coordinator, device))
+                sid = find_device_subentry_id(entry, device.id)
+                entities_by_subentry_id.setdefault(sid, []).append(
+                    GardenaPowerSwitch(coordinator, device)
+                )
                 _LOGGER.info("Adding new switch entity for device %s", device.id)
-        if new_entities:
-            async_add_entities(new_entities)
+        for sid, entities in entities_by_subentry_id.items():
+            async_add_entities(entities, config_subentry_id=sid)
 
     coordinator.async_add_listener(_add_new_devices)
 
