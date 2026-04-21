@@ -1,11 +1,23 @@
 from __future__ import annotations
 
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .coordinator import GardenaSmartLocalCoordinator
 from gardena_smart_local_api.devices.device import Device
+
+
+def find_device_subentry_id(entry: ConfigEntry, device_id: str) -> str | None:
+    return next(
+        (
+            sid
+            for sid, se in entry.subentries.items()
+            if se.data.get("device_id") == device_id
+        ),
+        None,
+    )
 
 
 class GardenaEntity(CoordinatorEntity[GardenaSmartLocalCoordinator]):

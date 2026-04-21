@@ -2,7 +2,11 @@ import logging
 
 import voluptuous as vol
 
-from homeassistant.config_entries import ConfigEntry, SOURCE_IMPORT
+
+from homeassistant.config_entries import (
+    ConfigEntry,
+    SOURCE_IMPORT,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.const import (
     CONF_HOST,
