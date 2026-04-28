@@ -4,7 +4,7 @@ import logging
 
 from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import EntityCategory, UnitOfTime
+from homeassistant.const import EntityCategory, UnitOfTime, UnitOfPressure
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
@@ -12,6 +12,7 @@ from .const import DOMAIN
 from .coordinator import GardenaSmartLocalCoordinator
 from .entity import GardenaEntity
 from gardena_smart_local_api.devices.device import Device
+from gardena_smart_local_api.devices import Pump
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -38,6 +39,15 @@ async def async_setup_entry(
                 _LOGGER.info(
                     "Adding new button config time entity for device %s", device.id
                 )
+            elif isinstance(device, Pump) and device.id not in known_devices:
+                known_devices.add(device.id)
+                new_entities.extend(
+                    [
+                        GardenaPumpTurnOnPressure(coordinator, device),
+                        GardenaPumpDrippingAlert(coordinator, device),
+                    ]
+                )
+                _LOGGER.info("Adding new pump number entities for device %s", device.id)
         if new_entities:
             async_add_entities(new_entities)
 
@@ -79,6 +89,78 @@ class GardenaButtonConfigTime(GardenaEntity, NumberEntity):
         )
         _LOGGER.info(
             "Set button config time for device %s to %s minutes",
+            self._device.id,
+            int(value),
+        )
+
+
+class GardenaPumpTurnOnPressure(GardenaEntity, NumberEntity):
+    _attr_native_min_value = 0.0
+    _attr_native_max_value = 10.0
+    _attr_native_step = 0.1
+    _attr_native_unit_of_measurement = UnitOfPressure.BAR
+    _attr_mode = NumberMode.BOX
+    _attr_entity_category = EntityCategory.CONFIG
+
+    def __init__(
+        self,
+        coordinator: GardenaSmartLocalCoordinator,
+        device: Pump,
+    ) -> None:
+        super().__init__(coordinator, device)
+        self._attr_unique_id = f"{device.id}_turn_on_pressure"
+        self._attr_name = "Turn-On Pressure"
+
+    @property
+    def native_value(self) -> float | None:
+        device = self.coordinator.data.get(self._device.id)
+        if not device:
+            return None
+        return device.turn_on_pressure
+
+    async def async_set_native_value(self, value: float) -> None:
+        await self.coordinator.send_request(
+            self._device.id,
+            self._device.build_set_turn_on_pressure_obj(value),
+        )
+        _LOGGER.info(
+            "Set turn-on pressure for device %s to %s bar",
+            self._device.id,
+            value,
+        )
+
+
+class GardenaPumpDrippingAlert(GardenaEntity, NumberEntity):
+    _attr_native_min_value = 0
+    _attr_native_max_value = 3600
+    _attr_native_step = 1
+    _attr_native_unit_of_measurement = UnitOfTime.SECONDS
+    _attr_mode = NumberMode.BOX
+    _attr_entity_category = EntityCategory.CONFIG
+
+    def __init__(
+        self,
+        coordinator: GardenaSmartLocalCoordinator,
+        device: Pump,
+    ) -> None:
+        super().__init__(coordinator, device)
+        self._attr_unique_id = f"{device.id}_dripping_alert"
+        self._attr_name = "Dripping Alert Timeout"
+
+    @property
+    def native_value(self) -> float | None:
+        device = self.coordinator.data.get(self._device.id)
+        if not device:
+            return None
+        return device.dripping_alert
+
+    async def async_set_native_value(self, value: float) -> None:
+        await self.coordinator.send_request(
+            self._device.id,
+            self._device.build_set_dripping_alert_obj(int(value)),
+        )
+        _LOGGER.info(
+            "Set dripping alert timeout for device %s to %s seconds",
             self._device.id,
             int(value),
         )
