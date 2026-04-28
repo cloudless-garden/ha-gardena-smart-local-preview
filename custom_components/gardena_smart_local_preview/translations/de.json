@@ -49,5 +49,24 @@
       "already_in_progress": "Das Gateway wurde anscheinend automatisch erkannt, klicke stattdessen auf \"Hinzufügen\" bei der erkannten Integration",
       "reconfigure_successful": "GARDENA smart Gateway-Einstellungen aktualisiert"
     }
+  },
+  "issues": {
+    "new_includable_device": {
+      "title": "Neues GARDENA Gerät zum Einbinden bereit: {device_name}",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "{device_name} einbinden",
+            "description": "Klicke auf **Absenden**, um **{device_name}** in dein GARDENA smart System einzubinden."
+          }
+        },
+        "error": {
+          "inclusion_failed": "Einbinden fehlgeschlagen. Stelle sicher, dass das Gerät eingeschaltet und in Reichweite des Gateways ist, und versuche es erneut."
+        },
+        "abort": {
+          "coordinator_not_found": "Die GARDENA smart Integration ist nicht mehr verfügbar."
+        }
+      }
+    }
   }
 }
