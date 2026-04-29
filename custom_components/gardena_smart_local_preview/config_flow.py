@@ -4,19 +4,34 @@ import logging
 import aiohttp
 import voluptuous as vol
 
-from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
+from homeassistant.config_entries import (
+    ConfigEntry,
+    ConfigFlow,
+    ConfigFlowResult,
+    ConfigSubentryFlow,
+    SubentryFlowResult,
+)
+from homeassistant.core import callback
 from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
 from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_PORT
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.util.ssl import get_default_no_verify_context
 
 from .const import DEFAULT_PORT, DOMAIN
+from .coordinator import GardenaSmartLocalCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
 
 class GardenaSmartLocalConfigFlow(ConfigFlow, domain=DOMAIN):
     VERSION = 1
+
+    @classmethod
+    @callback
+    def async_get_supported_subentry_types(
+        cls, config_entry: ConfigEntry
+    ) -> dict[str, type[ConfigSubentryFlow]]:
+        return {"device": GardenaInclusionSubentryFlow}
 
     def __init__(self) -> None:
         self._discovered_host: str | None = None
@@ -170,3 +185,54 @@ async def _async_try_connect(host: str, port: int, password: str) -> str | None:
         return "unknown"
 
     return None
+
+
+class GardenaInclusionSubentryFlow(ConfigSubentryFlow):
+    async def async_step_user(
+        self, user_input: dict | None = None
+    ) -> SubentryFlowResult:
+        if user_input is not None:
+            return await self.async_step_select()
+
+        return self.async_show_form(
+            step_id="user",
+            data_schema=vol.Schema({}),
+            last_step=False,
+        )
+
+    async def async_step_select(
+        self, user_input: dict | None = None
+    ) -> SubentryFlowResult:
+        entry = self._get_entry()
+        coordinator: GardenaSmartLocalCoordinator = self.hass.data[DOMAIN][
+            entry.entry_id
+        ]
+        devices = {k: v.device_name for k, v in coordinator.includable_devices.items()}
+
+        if not devices:
+            return self.async_abort(reason="no_devices_found")
+
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            instance_id = user_input["device"]
+            device_id = await coordinator.async_include_device(instance_id)
+            if device_id is not None:
+                result = self.async_create_entry(
+                    title=devices[instance_id],
+                    data={"device_id": device_id},
+                    unique_id=device_id,
+                )
+                # Broadcast coordinator update after _async_finish_flow adds the
+                # subentry to entry.subentries, so _add_new_devices sees it.
+                self.hass.loop.call_soon(
+                    coordinator.async_set_updated_data, coordinator.data
+                )
+                return result
+            errors["base"] = "inclusion_failed"
+
+        return self.async_show_form(
+            step_id="select",
+            data_schema=vol.Schema({vol.Required("device"): vol.In(devices)}),
+            errors=errors,
+        )

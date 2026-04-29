@@ -1,4 +1,31 @@
 {
+  "config_subentries": {
+    "device": {
+      "entry_type": "Gerät",
+      "initiate_flow": {
+        "user": "Gerät einbinden"
+      },
+      "step": {
+        "user": {
+          "title": "GARDENA-Gerät einbinden",
+          "description": "Versetze dein Gerät in den Einbindungsmodus (sieh bei Bedarf in der Anleitung deines Geräts nach) und klicke dann auf **Weiter**.\n\n**Hinweis:** Hier eingebundene Geräte werden lokal mit dem Gateway gekoppelt und erscheinen nicht in der GARDENA-App. Um die App zu verwenden, binde das Gerät stattdessen über die App ein."
+        },
+        "select": {
+          "title": "Gerät zum Einbinden auswählen",
+          "data": {
+            "device": "Gerät"
+          }
+        }
+      },
+      "abort": {
+        "no_devices_found": "Keine einbindbaren Geräte gefunden. Stelle sicher, dass dein Gerät im Einbindungsmodus ist, und versuche es erneut.",
+        "inclusion_successful": "{device_name} erfolgreich eingebunden."
+      },
+      "error": {
+        "inclusion_failed": "Gerät konnte nicht eingebunden werden. Bitte versuche es erneut."
+      }
+    }
+  },
   "config": {
     "step": {
       "user": {

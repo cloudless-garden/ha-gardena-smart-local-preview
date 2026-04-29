@@ -1,4 +1,31 @@
 {
+  "config_subentries": {
+    "device": {
+      "entry_type": "Device",
+      "initiate_flow": {
+        "user": "Include a device"
+      },
+      "step": {
+        "user": {
+          "title": "Include a GARDENA device",
+          "description": "Set your device in inclusion mode (refer to your device's manual if unsure how), then click **Next**.\n\n**Note:** Devices included here are paired locally with the gateway and will not show up in the GARDENA app. To use the app, include the device through the app instead."
+        },
+        "select": {
+          "title": "Select a device to include",
+          "data": {
+            "device": "Device"
+          }
+        }
+      },
+      "abort": {
+        "no_devices_found": "No includable devices found. Make sure your device is in inclusion mode and try again.",
+        "inclusion_successful": "{device_name} included successfully."
+      },
+      "error": {
+        "inclusion_failed": "Failed to include the device. Please try again."
+      }
+    }
+  },
   "config": {
     "step": {
       "user": {
