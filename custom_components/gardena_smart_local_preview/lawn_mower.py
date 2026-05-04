@@ -7,7 +7,7 @@ import logging
 from gardena_smart_local_api.devices import (
     Gen1Mower1,
     Gen1Mower2,
-    Gen1MowerStatus,
+    MowerState,
 )
 
 from homeassistant.components.lawn_mower import (
@@ -68,30 +68,21 @@ class GardenaMower(GardenaEntity, LawnMowerEntity):
 
     @property
     def activity(self) -> LawnMowerActivity:
-        status = self._device.status
-        _LOGGER.debug("Mower status: %s", status)
-        match status:
-            case (
-                Gen1MowerStatus.PAUSED
-                | Gen1MowerStatus.OK_CHARGING
-                | Gen1MowerStatus.PARKED_WEEK_TIMER
-                | Gen1MowerStatus.PARKED_BY_USER
-                | Gen1MowerStatus.PARKED_AUTOTIMER
-                | Gen1MowerStatus.PARKED_DAY_LIMIT
-                | Gen1MowerStatus.PARKED_FROST
-                | Gen1MowerStatus.WAIT_POWER_UP
-                | Gen1MowerStatus.OFF_MAIN_SWITCH
-                | Gen1MowerStatus.WAIT
-            ):
+        mower_state = self._device.state
+        _LOGGER.debug("Mower status: %s", mower_state)
+        match mower_state:
+            case MowerState.PARKED:
                 return LawnMowerActivity.DOCKED
-            case (
-                Gen1MowerStatus.OK_LEAVING_CS
-                | Gen1MowerStatus.OK_CUTTING_AUTO
-                | Gen1MowerStatus.OK_CUTTING_MANUAL
-            ):
+
+            case MowerState.LEAVING | MowerState.MOWING:
                 return LawnMowerActivity.MOWING
-            case Gen1MowerStatus.OK_SEARCHING_CS:
+
+            case MowerState.PAUSED:
+                return LawnMowerActivity.PAUSED
+
+            case MowerState.RETURNING:
                 return LawnMowerActivity.RETURNING
+
         return LawnMowerActivity.ERROR
 
     async def async_start_mowing(self) -> None:
