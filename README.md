@@ -84,7 +84,7 @@ After adding the configuration, restart Home Assistant.
 | GARDENA smart Sensor                  | 19030-20                                   | Temperature, soil moisture, light, battery, RF link quality |
 | GARDENA smart Sensor II               | 19040-20                                   | Temperature, soil moisture, battery, RF link quality        |
 | GARDENA smart Power Adapter           | 19095-20                                   | Switch                                                      |
-| GARDENA smart SILENO                  | 19060-20, 19060-60.                        | Lawn mower                                                  |
+| GARDENA smart SILENO                  | 19060-20, 19060-60                         | Lawn mower                                                  |
 | GARDENA smart SILENO+                 | 19061-20, 19061-60, 19064-60, 19065-60     | Lawn mower                                                  |
 | GARDENA smart SILENO city             | 19066-20, 19069-20                         | Lawn mower                                                  |
 | GARDENA smart SILENO life             | 19113-20, 19114-20, 19115-20               | Lawn mower                                                  |
