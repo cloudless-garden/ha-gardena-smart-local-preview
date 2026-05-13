@@ -23,6 +23,8 @@ systemctl restart firewall
 systemctl start websocketd
 ```
 
+The service `websocketd` is now listening on port 8443/TCP.
+
 [smart-garden-gateway-public]: https://github.com/husqvarnagroup/smart-garden-gateway-public#getting-access
 
 ## Installation
