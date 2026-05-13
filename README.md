@@ -29,15 +29,18 @@ systemctl start websocketd
 
 ### HACS (Recommended)
 
-1. Open HACS in your Home Assistant instance
-2. Click on "Integrations"
-3. Click the three dots in the top right corner
-4. Select "Custom repositories"
-5. Add the repository URL: `https://github.com/cloudless-garden/ha-gardena-smart-local-preview`
-6. Select category: "Integration"
-7. Click "Add"
-8. Find "GARDENA smart local (preview)" in the integration list and install it
-9. Restart Home Assistant
+1. [Install HACS] on your Home Assistant instance
+2. Open HACS
+3. Click on "Integrations"
+4. Click the three dots in the top right corner
+5. Select "Custom repositories"
+6. Add the repository URL: `https://github.com/cloudless-garden/ha-gardena-smart-local-preview`
+7. Select category: "Integration"
+8. Click "Add"
+9. Find "GARDENA smart local (preview)" in the integration list and install it
+10. Restart Home Assistant
+
+[Install HACS]: https://hacs.xyz/docs/use/download/download/
 
 ### Manual Installation
 
