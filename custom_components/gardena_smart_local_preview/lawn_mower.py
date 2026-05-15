@@ -68,6 +68,8 @@ class GardenaMower(GardenaEntity, LawnMowerEntity):
     def activity(self) -> LawnMowerActivity:
         mower_state = self._device.state
         _LOGGER.debug("Mower status: %s", mower_state)
+        if hasattr(self._device, "_status"):
+            _LOGGER.debug(f"DBG: {self._device._status}")
         match mower_state:
             case MowerState.PARKED:
                 return LawnMowerActivity.DOCKED
