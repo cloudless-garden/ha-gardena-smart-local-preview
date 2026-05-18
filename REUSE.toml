@@ -1,0 +1,22 @@
+version = 1
+
+[[annotations]]
+path = [
+  "custom_components/gardena_smart_local_preview/brand/icon.png",
+  "custom_components/gardena_smart_local_preview/brand/icon@2x.png",
+  "custom_components/gardena_smart_local_preview/brand/logo.png",
+  "custom_components/gardena_smart_local_preview/brand/logo@2x.png",
+  "custom_components/gardena_smart_local_preview/manifest.json",
+  "custom_components/gardena_smart_local_preview/translations/de.json",
+  "custom_components/gardena_smart_local_preview/translations/en.json",
+  "hacs.json",
+]
+SPDX-FileCopyrightText = "2026 GARDENA GmbH"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = [
+  "uv.lock",
+]
+SPDX-FileCopyrightText = "NONE"
+SPDX-License-Identifier = "CC0-1.0"
