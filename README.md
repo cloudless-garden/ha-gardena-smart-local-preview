@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2026 GARDENA GmbH
+
+SPDX-License-Identifier: Apache-2.0
+-->
+
 # Home Assistant Integration for GARDENA smart local API (preview)
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
@@ -104,3 +110,11 @@ After adding the configuration, restart Home Assistant.
 ## Related Projects
 
 This integration is built around the [gardena-smart-local-api](https://github.com/cloudless-garden/gardena-smart-local-api) library.
+
+## Contributing
+
+### Licensing Compliance
+
+```txt
+uv run reuse lint
+```

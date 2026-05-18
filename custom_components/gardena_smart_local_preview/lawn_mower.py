@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 GARDENA GmbH
+#
+# SPDX-License-Identifier: Apache-2.0
+
 """GARDENA smart SILENO mower entity."""
 
 from __future__ import annotations
