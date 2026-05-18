@@ -1,0 +1,9 @@
+[project]
+name = "ha-gardena-smart-local-preview"
+description = "Home Assistant Integration for GARDENA smart local API (preview)"
+version="0.0.3"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "gardena-smart-local-api>=0.0.8",
+]
