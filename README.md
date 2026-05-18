@@ -1,6 +1,6 @@
 # Home Assistant Integration for GARDENA smart local API (preview)
 
-[![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
+[![hacs_badge](https://img.shields.io/badge/HACS-Default-orange.svg)](https://github.com/custom-components/hacs)
 
 Home Assistant integration for GARDENA smart devices using local communication (not going through the cloud).
 
