@@ -98,3 +98,11 @@ After adding the configuration, restart Home Assistant.
 ## Related Projects
 
 This integration is built around the [gardena-smart-local-api](https://github.com/cloudless-garden/gardena-smart-local-api) library.
+
+## Contributing
+
+### Licensing Compliance
+
+```txt
+uv run reuse lint
+```

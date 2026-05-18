@@ -1,0 +1,4 @@
+# This file is keep minimal because it is used for dev dependencies only, not for publishing.
+
+[dependency-groups]
+dev = ["reuse>=6.2.0"]
