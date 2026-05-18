@@ -1,0 +1,24 @@
+# SPDX-FileCopyrightText: 2026 GARDENA GmbH
+#
+# SPDX-License-Identifier: Apache-2.0
+
+name: Check compliance
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  reuse:
+    name: REUSE
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+      - name: Enforce REUSE compliance
+        run: uv run reuse lint
