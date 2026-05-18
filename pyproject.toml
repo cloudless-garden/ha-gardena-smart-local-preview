@@ -1,4 +1,9 @@
-# This file is keep minimal because it is used for dev dependencies only, not for publishing.
+# SPDX-FileCopyrightText: 2026 GARDENA GmbH
+#
+# SPDX-License-Identifier: Apache-2.0
+
+# This file is kept minimal because it is used for dev dependencies only, not
+# for publishing.
 
 [dependency-groups]
 dev = ["reuse>=6.2.0"]
