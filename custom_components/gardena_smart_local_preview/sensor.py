@@ -31,6 +31,7 @@ async def async_setup_entry(
     known_light_devices: set[str] = set()
     known_battery_devices: set[str] = set()
     known_rf_link_devices: set[str] = set()
+    known_gen1_mower_devices: set[str] = set()
 
     def _add_new_devices() -> None:
         if not coordinator.data:
@@ -73,6 +74,15 @@ async def async_setup_entry(
                 new_entities.append(GardenaRfLinkQualitySensor(coordinator, device))
                 _LOGGER.info(
                     "Adding new RF link quality sensor entity for device %s", device.id
+                )
+            if (
+                hasattr(device, "_status")
+                and device.id not in known_gen1_mower_devices
+            ):
+                known_gen1_mower_devices.add(device.id)
+                new_entities.append(GardenaInternalGen1MowerState(coordinator, device))
+                _LOGGER.info(
+                    "Adding new gen1 mower state sensor entity for device %s", device.id
                 )
         if new_entities:
             async_add_entities(new_entities)
@@ -188,3 +198,22 @@ class GardenaRfLinkQualitySensor(GardenaEntity, SensorEntity):
         if not device:
             return None
         return device.rf_link_quality
+
+
+class GardenaInternalGen1MowerState(GardenaEntity, SensorEntity):
+    def __init__(
+        self,
+        coordinator: GardenaSmartLocalCoordinator,
+        device: Device,
+    ) -> None:
+        super().__init__(coordinator, device)
+        self._attr_unique_id = f"{device.id}_internal_state"
+        self._attr_name = "Internal state"
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    @property
+    def native_value(self) -> str | None:
+        device = self.coordinator.data.get(self._device.id)
+        if not device:
+            return None
+        return str(device._status)
