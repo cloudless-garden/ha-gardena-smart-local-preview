@@ -10,11 +10,11 @@ from homeassistant.components.sensor import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import LIGHT_LUX, PERCENTAGE, EntityCategory, UnitOfTemperature
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .const import DOMAIN
 from .coordinator import GardenaSmartLocalCoordinator
-from .entity import GardenaEntity
+from .entity import GardenaEntity, find_device_subentry_id
 from gardena_smart_local_api.devices.device import Device
 
 _LOGGER = logging.getLogger(__name__)
@@ -23,7 +23,7 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
-    async_add_entities: AddEntitiesCallback,
+    async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     coordinator: GardenaSmartLocalCoordinator = hass.data[DOMAIN][entry.entry_id]
     known_temp_devices: set[str] = set()
@@ -35,11 +35,20 @@ async def async_setup_entry(
     def _add_new_devices() -> None:
         if not coordinator.data:
             return
-        new_entities = []
+        for cache in (
+            known_temp_devices,
+            known_moisture_devices,
+            known_light_devices,
+            known_battery_devices,
+            known_rf_link_devices,
+        ):
+            cache.intersection_update(coordinator.data)
+        entities_by_subentry_id: dict[str | None, list] = {}
         for device in coordinator.data.values():
+            device_entities = []
             if hasattr(device, "temperature") and device.id not in known_temp_devices:
                 known_temp_devices.add(device.id)
-                new_entities.append(GardenaTemperatureSensor(coordinator, device))
+                device_entities.append(GardenaTemperatureSensor(coordinator, device))
                 _LOGGER.info(
                     "Adding new temperature sensor entity for device %s", device.id
                 )
@@ -48,20 +57,20 @@ async def async_setup_entry(
                 and device.id not in known_moisture_devices
             ):
                 known_moisture_devices.add(device.id)
-                new_entities.append(GardenaSoilMoistureSensor(coordinator, device))
+                device_entities.append(GardenaSoilMoistureSensor(coordinator, device))
                 _LOGGER.info(
                     "Adding new soil moisture sensor entity for device %s", device.id
                 )
             if hasattr(device, "light") and device.id not in known_light_devices:
                 known_light_devices.add(device.id)
-                new_entities.append(GardenaLightSensor(coordinator, device))
+                device_entities.append(GardenaLightSensor(coordinator, device))
                 _LOGGER.info("Adding new light sensor entity for device %s", device.id)
             if (
                 hasattr(device, "battery_level")
                 and device.id not in known_battery_devices
             ):
                 known_battery_devices.add(device.id)
-                new_entities.append(GardenaBatterySensor(coordinator, device))
+                device_entities.append(GardenaBatterySensor(coordinator, device))
                 _LOGGER.info(
                     "Adding new battery sensor entity for device %s", device.id
                 )
@@ -70,12 +79,15 @@ async def async_setup_entry(
                 and device.id not in known_rf_link_devices
             ):
                 known_rf_link_devices.add(device.id)
-                new_entities.append(GardenaRfLinkQualitySensor(coordinator, device))
+                device_entities.append(GardenaRfLinkQualitySensor(coordinator, device))
                 _LOGGER.info(
                     "Adding new RF link quality sensor entity for device %s", device.id
                 )
-        if new_entities:
-            async_add_entities(new_entities)
+            if device_entities:
+                sid = find_device_subentry_id(entry, device.id)
+                entities_by_subentry_id.setdefault(sid, []).extend(device_entities)
+        for sid, entities in entities_by_subentry_id.items():
+            async_add_entities(entities, config_subentry_id=sid)
 
     coordinator.async_add_listener(_add_new_devices)
 

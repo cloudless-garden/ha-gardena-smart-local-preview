@@ -2,8 +2,17 @@ import logging
 
 import voluptuous as vol
 
-from homeassistant.config_entries import ConfigEntry, SOURCE_IMPORT
-from homeassistant.core import HomeAssistant
+
+from homeassistant.config_entries import (
+    ConfigEntry,
+    ConfigEntryChange,
+    ConfigSubentry,
+    SIGNAL_CONFIG_ENTRY_CHANGED,
+    SOURCE_IMPORT,
+)
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.const import (
     CONF_HOST,
     CONF_PORT,
@@ -63,8 +72,62 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     return True
 
 
+def _async_migrate_devices_to_subentries(
+    hass: HomeAssistant, entry: ConfigEntry
+) -> None:
+    dev_reg = dr.async_get(hass)
+    for dev_entry in dr.async_entries_for_config_entry(dev_reg, entry.entry_id):
+        if None not in dev_entry.config_entries_subentries[entry.entry_id]:
+            continue
+
+        device_id = next(
+            (id_ for domain, id_ in dev_entry.identifiers if domain == DOMAIN),
+            None,
+        )
+        if device_id is None:
+            _LOGGER.warning(
+                "Device %s linked to entry without %s identifier; skipping",
+                dev_entry.id,
+                DOMAIN,
+            )
+            continue
+
+        subentry = next(
+            (
+                se
+                for se in entry.subentries.values()
+                if se.data.get("device_id") == device_id
+            ),
+            None,
+        )
+        if subentry is None:
+            title = (
+                f"{dev_entry.model} {dev_entry.serial_number}"
+                if dev_entry.model and dev_entry.serial_number
+                else device_id
+            )
+            subentry = ConfigSubentry(
+                data={"device_id": device_id},
+                subentry_type="device",
+                title=title,
+                unique_id=device_id,
+            )
+            hass.config_entries.async_add_subentry(entry, subentry)
+
+        dev_reg.async_update_device(
+            dev_entry.id,
+            add_config_entry_id=entry.entry_id,
+            add_config_subentry_id=subentry.subentry_id,
+            remove_config_entry_id=entry.entry_id,
+            remove_config_subentry_id=None,
+        )
+        _LOGGER.info("Migrated device %s to subentry", device_id)
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})
+
+    _async_migrate_devices_to_subentries(hass, entry)
 
     coordinator = GardenaSmartLocalCoordinator(
         hass,
@@ -79,6 +142,37 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await coordinator.async_disconnect()
 
     entry.async_on_unload(hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, _stop))
+
+    known_subentries: dict[str, str] = {
+        sid: se.data["device_id"]
+        for sid, se in entry.subentries.items()
+        if "device_id" in se.data
+    }
+
+    @callback
+    def _on_entry_updated(
+        change_type: ConfigEntryChange, changed_entry: ConfigEntry
+    ) -> None:
+        if (
+            change_type != ConfigEntryChange.UPDATED
+            or changed_entry.entry_id != entry.entry_id
+        ):
+            return
+        current_ids = set(entry.subentries.keys())
+        for subentry_id, device_id in list(known_subentries.items()):
+            if subentry_id not in current_ids:
+                del known_subentries[subentry_id]
+                hass.async_create_background_task(
+                    coordinator.async_exclude_device(device_id),
+                    f"gardena_exclude_{device_id}",
+                )
+        for sid, se in entry.subentries.items():
+            if sid not in known_subentries and "device_id" in se.data:
+                known_subentries[sid] = se.data["device_id"]
+
+    entry.async_on_unload(
+        async_dispatcher_connect(hass, SIGNAL_CONFIG_ENTRY_CHANGED, _on_entry_updated)
+    )
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
