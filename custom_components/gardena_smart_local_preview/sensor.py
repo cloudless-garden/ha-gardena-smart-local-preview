@@ -8,7 +8,7 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import LIGHT_LUX, PERCENTAGE, EntityCategory, UnitOfTemperature
+from homeassistant.const import LIGHT_LUX, PERCENTAGE, EntityCategory, UnitOfTemperature, UnitOfTime, UnitOfLength
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
@@ -30,7 +30,12 @@ async def async_setup_entry(
     known_moisture_devices: set[str] = set()
     known_light_devices: set[str] = set()
     known_battery_devices: set[str] = set()
+    known_charging_cycles_devices: set[str] = set()
+    known_cutting_time_devices: set[str] = set()
+    known_running_time_devices: set[str] = set()
+    known_collisions_devices: set[str] = set()
     known_rf_link_devices: set[str] = set()
+    known_guide_wire_length_devices: set[str] = set()
 
     def _add_new_devices() -> None:
         if not coordinator.data:
@@ -66,6 +71,42 @@ async def async_setup_entry(
                     "Adding new battery sensor entity for device %s", device.id
                 )
             if (
+                hasattr(device, "charging_cycles")
+                and device.id not in known_charging_cycles_devices
+            ):
+                known_charging_cycles_devices.add(device.id)
+                new_entities.append(GardenaChargingCyclesSensor(coordinator, device))
+                _LOGGER.info(
+                    "Adding new charging cycles sensor entity for device %s", device.id
+                )
+            if (
+                hasattr(device, "cutting_time")
+                and device.id not in known_cutting_time_devices
+            ):
+                known_cutting_time_devices.add(device.id)
+                new_entities.append(GardenaCuttingTimeSensor(coordinator, device))
+                _LOGGER.info(
+                    "Adding new cutting time sensor entity for device %s", device.id
+                )
+            if (
+                hasattr(device, "running_time")
+                and device.id not in known_running_time_devices
+            ):
+                known_running_time_devices.add(device.id)
+                new_entities.append(GardenaRunningTimeSensor(coordinator, device))
+                _LOGGER.info(
+                    "Adding new running time sensor entity for device %s", device.id
+                )
+            if (
+                hasattr(device, "collisions")
+                and device.id not in known_collisions_devices
+            ):
+                known_collisions_devices.add(device.id)
+                new_entities.append(GardenaCollisionsSensor(coordinator, device))
+                _LOGGER.info(
+                    "Adding new collisions sensor entity for device %s", device.id
+                )
+            if (
                 hasattr(device, "rf_link_quality")
                 and device.id not in known_rf_link_devices
             ):
@@ -73,6 +114,15 @@ async def async_setup_entry(
                 new_entities.append(GardenaRfLinkQualitySensor(coordinator, device))
                 _LOGGER.info(
                     "Adding new RF link quality sensor entity for device %s", device.id
+                )
+            if (
+                hasattr(device, "guide_wire_length")
+                and device.id not in known_guide_wire_length_devices
+            ):
+                known_guide_wire_length_devices.add(device.id)
+                new_entities.append(GardenaGuideWireLengthSensor(coordinator, device))
+                _LOGGER.info(
+                    "Adding new guide wire length sensor entity for device %s", device.id
                 )
         if new_entities:
             async_add_entities(new_entities)
@@ -168,6 +218,88 @@ class GardenaBatterySensor(GardenaEntity, SensorEntity):
         return float(level) if level is not None else None
 
 
+class GardenaChargingCyclesSensor(GardenaEntity, SensorEntity):
+    def __init__(
+        self,
+        coordinator: GardenaSmartLocalCoordinator,
+        device: Device,
+    ) -> None:
+        super().__init__(coordinator, device)
+        self._attr_unique_id = f"{device.id}_charging_cycles"
+        self._attr_name = "Charging Cycles"
+        self._attr_icon = "mdi:counter"
+        self._attr_state_class = SensorStateClass.MEASUREMENT
+    
+    @property
+    def native_value(self) -> int | None:
+        device = self.coordinator.data.get(self._device.id)
+        if not device:
+            return None
+        return device.charging_cycles
+
+
+class GardenaCuttingTimeSensor(GardenaEntity, SensorEntity):
+    def __init__(
+        self,
+        coordinator: GardenaSmartLocalCoordinator,
+        device: Device,
+    ) -> None:
+        super().__init__(coordinator, device)
+        self._attr_unique_id = f"{device.id}_cutting_time"
+        self._attr_name = "Cutting Time"
+        self._attr_icon = "mdi:clock-outline"
+        self._attr_state_class = SensorStateClass.MEASUREMENT
+        self._attr_native_unit_of_measurement = UnitOfTime.HOURS
+    
+    @property
+    def native_value(self) -> int | None:
+        device = self.coordinator.data.get(self._device.id)
+        if not device:
+            return None
+        return device.cutting_time
+    
+
+class GardenaRunningTimeSensor(GardenaEntity, SensorEntity):
+    def __init__(
+        self,
+        coordinator: GardenaSmartLocalCoordinator,
+        device: Device,
+    ) -> None:
+        super().__init__(coordinator, device)
+        self._attr_unique_id = f"{device.id}_running_time"
+        self._attr_name = "Running Time"
+        self._attr_icon = "mdi:clock-outline"
+        self._attr_state_class = SensorStateClass.MEASUREMENT
+        self._attr_native_unit_of_measurement = UnitOfTime.HOURS
+    
+    @property
+    def native_value(self) -> int | None:
+        device = self.coordinator.data.get(self._device.id)
+        if not device:
+            return None
+        return device.running_time
+
+
+class GardenaCollisionsSensor(GardenaEntity, SensorEntity):
+    def __init__(
+        self,
+        coordinator: GardenaSmartLocalCoordinator,
+        device: Device,
+    ) -> None:
+        super().__init__(coordinator, device)
+        self._attr_unique_id = f"{device.id}_collisions"
+        self._attr_name = "Collisions"
+        self._attr_icon = "mdi:counter"
+        self._attr_state_class = SensorStateClass.MEASUREMENT
+    
+    @property
+    def native_value(self) -> int | None:
+        device = self.coordinator.data.get(self._device.id)
+        if not device:
+            return None
+        return device.collisions
+    
+
 class GardenaRfLinkQualitySensor(GardenaEntity, SensorEntity):
     def __init__(
         self,
@@ -188,3 +320,25 @@ class GardenaRfLinkQualitySensor(GardenaEntity, SensorEntity):
         if not device:
             return None
         return device.rf_link_quality
+
+
+class GardenaGuideWireLengthSensor(GardenaEntity, SensorEntity):
+    def __init__(
+        self,
+        coordinator: GardenaSmartLocalCoordinator,
+        device: Device,
+    ) -> None:
+        super().__init__(coordinator, device)
+        self._attr_unique_id = f"{device.id}_guide_wire_length"
+        self._attr_name = "Guide Wire Length"
+        self._attr_icon = "mdi:ruler"
+        self._attr_state_class = SensorStateClass.MEASUREMENT
+        self._attr_native_unit_of_measurement = UnitOfLength.METERS
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
+    
+    @property
+    def native_value(self) -> int | None:
+        device = self.coordinator.data.get(self._device.id)
+        if not device:
+            return None
+        return device.guide_wire_length
