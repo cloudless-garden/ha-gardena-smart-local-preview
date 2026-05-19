@@ -71,7 +71,7 @@ class GardenaMower(GardenaEntity, LawnMowerEntity):
         if hasattr(self._device, "_status"):
             _LOGGER.debug(f"DBG: {self._device._status}")
         match mower_state:
-            case MowerState.PARKED:
+            case MowerState.CHARGING | MowerState.PARKED:
                 return LawnMowerActivity.DOCKED
 
             case MowerState.LEAVING | MowerState.MOWING:
