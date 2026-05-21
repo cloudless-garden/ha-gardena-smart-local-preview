@@ -309,6 +309,7 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
         if info is None:
             _LOGGER.error("No includable device with instance_id %s", instance_id)
             return None
+        device_id = info.device_id
 
         request = build_inclusion_obj(info.service, instance_id)
         try:
@@ -316,7 +317,7 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
                 instance_id, request, wait_for_response_sec=INCLUDE_REPLY_TIMEOUT
             )
         except asyncio.TimeoutError:
-            _LOGGER.error("Timeout waiting for inclusion reply for %s", instance_id)
+            _LOGGER.error("Timeout waiting for inclusion reply for %s", device_id)
             return None
         except Exception as err:
             _LOGGER.error("Error including device %s: %s", instance_id, err)
@@ -324,11 +325,20 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
 
         for msg in replies:
             if isinstance(msg, Reply) and msg.success:
+                for _ in range(20):
+                    if instance_id not in self._includable_devices:
+                        break
+                    await asyncio.sleep(1)
+                else:
+                    _LOGGER.error("Timeout waiting for inclusion to complete for %s", device_id)
+                    return None
+
                 _LOGGER.info(
                     "Device %s (instance %s) included successfully",
                     info.device_id,
                     instance_id,
                 )
+
                 try:
                     # broadcast=False: the subentry doesn't exist yet at this
                     # point; the caller schedules async_set_updated_data as a
