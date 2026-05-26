@@ -16,7 +16,6 @@ from homeassistant.const import LIGHT_LUX, PERCENTAGE, EntityCategory, UnitOfTem
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from .const import DOMAIN
 from .coordinator import GardenaSmartLocalCoordinator
 from .entity import GardenaEntity, find_device_subentry_id
 from gardena_smart_local_api.devices.device import Device
@@ -29,7 +28,7 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
-    coordinator: GardenaSmartLocalCoordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator: GardenaSmartLocalCoordinator = entry.runtime_data
     known_temp_devices: set[str] = set()
     known_moisture_devices: set[str] = set()
     known_light_devices: set[str] = set()
