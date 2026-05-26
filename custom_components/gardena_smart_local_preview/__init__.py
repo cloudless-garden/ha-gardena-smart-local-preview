@@ -56,8 +56,6 @@ CONFIG_SCHEMA = vol.Schema(
 
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
-    hass.data.setdefault(DOMAIN, {})
-
     if DOMAIN not in config:
         return True
 
@@ -130,8 +128,6 @@ def _async_migrate_devices_to_subentries(
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    hass.data.setdefault(DOMAIN, {})
-
     _async_migrate_devices_to_subentries(hass, entry)
 
     coordinator = GardenaSmartLocalCoordinator(
@@ -141,7 +137,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         password=entry.data[CONF_PASSWORD],
     )
     await coordinator.async_connect()
-    hass.data[DOMAIN][entry.entry_id] = coordinator
+    entry.runtime_data = coordinator
 
     async def _stop(_event: object) -> None:
         await coordinator.async_disconnect()
@@ -184,6 +180,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    coordinator: GardenaSmartLocalCoordinator = hass.data[DOMAIN].pop(entry.entry_id)
+    coordinator: GardenaSmartLocalCoordinator = entry.runtime_data
     await coordinator.async_disconnect()
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)

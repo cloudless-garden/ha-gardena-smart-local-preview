@@ -12,7 +12,6 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from .const import DOMAIN
 from .coordinator import GardenaSmartLocalCoordinator
 from .entity import GardenaEntity, find_device_subentry_id
 from gardena_smart_local_api.devices import PowerAdapter
@@ -28,7 +27,7 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
-    coordinator: GardenaSmartLocalCoordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator: GardenaSmartLocalCoordinator = entry.runtime_data
     known_devices: set[str] = set()
 
     def _add_new_devices() -> None:
