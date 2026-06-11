@@ -208,9 +208,7 @@ class GardenaInclusionSubentryFlow(ConfigSubentryFlow):
         self, user_input: dict | None = None
     ) -> SubentryFlowResult:
         entry = self._get_entry()
-        coordinator: GardenaSmartLocalCoordinator = self.hass.data[DOMAIN][
-            entry.entry_id
-        ]
+        coordinator: GardenaSmartLocalCoordinator = entry.runtime_data
         devices = {k: v.device_name for k, v in coordinator.includable_devices.items()}
 
         if not devices:
