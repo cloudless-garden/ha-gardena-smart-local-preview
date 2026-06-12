@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
+from types import MappingProxyType
 
 import voluptuous as vol
 
@@ -110,7 +111,7 @@ def _async_migrate_devices_to_subentries(
                 else device_id
             )
             subentry = ConfigSubentry(
-                data={"device_id": device_id},
+                data=MappingProxyType({"device_id": device_id}),
                 subentry_type="device",
                 title=title,
                 unique_id=device_id,
