@@ -75,62 +75,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     return True
 
 
-# TODO remove this migration code after a few releases, once we can be sure most users have migrated to the new config entries structure with subentries
-def _async_migrate_devices_to_subentries(
-    hass: HomeAssistant, entry: ConfigEntry
-) -> None:
-    dev_reg = dr.async_get(hass)
-    for dev_entry in dr.async_entries_for_config_entry(dev_reg, entry.entry_id):
-        if None not in dev_entry.config_entries_subentries[entry.entry_id]:
-            continue
-
-        device_id = next(
-            (id_ for domain, id_ in dev_entry.identifiers if domain == DOMAIN),
-            None,
-        )
-        if device_id is None:
-            _LOGGER.warning(
-                "Device %s linked to entry without %s identifier; skipping",
-                dev_entry.id,
-                DOMAIN,
-            )
-            continue
-
-        subentry = next(
-            (
-                se
-                for se in entry.subentries.values()
-                if se.data.get("device_id") == device_id
-            ),
-            None,
-        )
-        if subentry is None:
-            title = (
-                f"{dev_entry.model} {dev_entry.serial_number}"
-                if dev_entry.model and dev_entry.serial_number
-                else device_id
-            )
-            subentry = ConfigSubentry(
-                data=MappingProxyType({"device_id": device_id}),
-                subentry_type="device",
-                title=title,
-                unique_id=device_id,
-            )
-            hass.config_entries.async_add_subentry(entry, subentry)
-
-        dev_reg.async_update_device(
-            dev_entry.id,
-            add_config_entry_id=entry.entry_id,
-            add_config_subentry_id=subentry.subentry_id,
-            remove_config_entry_id=entry.entry_id,
-            remove_config_subentry_id=None,
-        )
-        _LOGGER.info("Migrated device %s to subentry", device_id)
-
-
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    _async_migrate_devices_to_subentries(hass, entry)
-
     coordinator = GardenaSmartLocalCoordinator(
         hass,
         host=entry.data[CONF_HOST],
@@ -144,6 +89,51 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await coordinator.async_disconnect()
 
     entry.async_on_unload(hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, _stop))
+
+    @callback
+    def _ensure_device_subentries() -> None:
+        if not coordinator.data:
+            return
+        dev_reg = dr.async_get(hass)
+        subentry_ids_by_device = {
+            se.data["device_id"]: sid
+            for sid, se in entry.subentries.items()
+            if "device_id" in se.data
+        }
+        for device in coordinator.data.values():
+            subentry_id = subentry_ids_by_device.get(device.id)
+            if subentry_id is None:
+                subentry = ConfigSubentry(
+                    data=MappingProxyType({"device_id": device.id}),
+                    subentry_type="device",
+                    title=f"{device.model_definition.name} {device.serial_number}",
+                    unique_id=device.id,
+                )
+                hass.config_entries.async_add_subentry(entry, subentry)
+                subentry_id = subentry.subentry_id
+                _LOGGER.info("Created subentry for device %s", device.id)
+
+            # TODO remove this re-link migration after a few releases, once we
+            # can be sure most users have migrated to the new config entries
+            # structure with subentries.
+            dev_entry = dev_reg.async_get_device(identifiers={(DOMAIN, device.id)})
+            if (
+                dev_entry is not None
+                and None
+                in dev_entry.config_entries_subentries.get(entry.entry_id, set())
+            ):
+                dev_reg.async_update_device(
+                    dev_entry.id,
+                    add_config_entry_id=entry.entry_id,
+                    add_config_subentry_id=subentry_id,
+                    remove_config_entry_id=entry.entry_id,
+                    remove_config_subentry_id=None,
+                )
+                _LOGGER.info("Migrated device %s to subentry", device.id)
+
+    # Register before platform listeners so subentries exist when
+    # platforms look them up for newly discovered devices.
+    entry.async_on_unload(coordinator.async_add_listener(_ensure_device_subentries))
 
     known_subentries: dict[str, str] = {
         sid: se.data["device_id"]
