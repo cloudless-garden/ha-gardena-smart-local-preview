@@ -101,6 +101,7 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
             reader_task = None
             consumer_task = None
             try:
+                _LOGGER.debug("Connecting to GARDENA smart Gateway at %s", self.uri)
                 async with aiohttp.ClientSession() as session:
                     async with session.ws_connect(
                         self.uri,
@@ -110,7 +111,7 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
                     ) as ws:
                         self._ws = ws
                         _LOGGER.info(
-                            "Connected to GARDENA local gateway at %s", self.uri
+                            "Connected to GARDENA smart Gateway at %s", self.uri
                         )
 
                         reader_task = self.hass.async_create_background_task(
@@ -126,6 +127,9 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
 
                         # Block until the reader exits (disconnect / error)
                         await reader_task
+                        _LOGGER.info(
+                            "Disconnected from GARDENA smart Gateway, reconnecting"
+                        )
 
             except asyncio.CancelledError:
                 _LOGGER.debug("WebSocket loop cancelled")
@@ -160,32 +164,50 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
                     break
                 case aiohttp.WSMsgType.CLOSED | aiohttp.WSMsgType.CLOSING:
                     break
+        _LOGGER.warning(
+            "Connection to GARDENA smart Gateway closed (close code: %s)", ws.close_code
+        )
 
     async def _msg_consumer(self) -> None:
-        while True:
-            raw = await self._msg_queue.get()
-            try:
-                messages = IngressMessageList.model_validate_json(raw)
-            except Exception:
-                _LOGGER.debug("Ignoring non-list message from gateway: %s", raw)
-                continue
+        try:
+            while True:
+                raw = await self._msg_queue.get()
+                try:
+                    messages = IngressMessageList.model_validate_json(raw)
+                except Exception:
+                    _LOGGER.debug(
+                        "Ignoring non-list message from GARDENA smart Gateway: %s", raw
+                    )
+                    continue
 
-            passthrough: IngressMessageList = IngressMessageList([])
-            for msg in messages:
-                if isinstance(msg, Reply) and msg.request_id in self._pending_replies:
-                    fut = self._pending_replies.pop(msg.request_id)
-                    if not fut.done():
-                        fut.set_result(msg)
-                else:
-                    passthrough.append(msg)
+                passthrough: IngressMessageList = IngressMessageList([])
+                for msg in messages:
+                    if (
+                        isinstance(msg, Reply)
+                        and msg.request_id in self._pending_replies
+                    ):
+                        fut = self._pending_replies.pop(msg.request_id)
+                        if not fut.done():
+                            fut.set_result(msg)
+                    else:
+                        passthrough.append(msg)
 
-            if passthrough:
-                await self._handle_messages(passthrough)
+                if passthrough:
+                    await self._handle_messages(passthrough)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            _LOGGER.exception(
+                "Message consumer failed, incoming events are no longer processed"
+            )
+            raise
 
     async def _do_discovery(self, broadcast: bool = True) -> None:
         discovery = build_discovery_obj()
         n = len(list(discovery))
-        _LOGGER.debug("Sent discovery request, awaiting %d replies", n)
+        _LOGGER.debug(
+            "Sent discovery request to GARDENA smart Gateway, awaiting %d replies", n
+        )
 
         try:
             replies = await self.send_request(
@@ -193,7 +215,7 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
             )
         except asyncio.TimeoutError:
             raise RuntimeError(
-                f"Timed out waiting for discovery replies (expected {n})"
+                f"Timed out waiting for discovery replies from GARDENA smart Gateway (expected {n})"
             )
 
         devices = await create_devices_from_messages(replies)
@@ -227,7 +249,15 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
                                 device_id,
                                 msg,
                             )
-                            self._devices[device_id].update_data(msg)
+                            device = self._devices[device_id]
+                            was_online = device.is_online
+                            device.update_data(msg)
+                            if device.is_online != was_online:
+                                _LOGGER.info(
+                                    "Device %s connection status changed: online=%s",
+                                    device_id,
+                                    device.is_online,
+                                )
                             updated = True
                     else:
                         _LOGGER.debug(
@@ -426,8 +456,10 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
         request: EgressMessageList,
         wait_for_response_sec: float = 0,
     ) -> IngressMessageList:
-        if not self._ws:
-            _LOGGER.error("WebSocket not connected")
+        if not self._ws or self._ws.closed:
+            _LOGGER.error(
+                "Cannot send request to device %s: WebSocket not connected", device_id
+            )
             return IngressMessageList([])
 
         if wait_for_response_sec > 0:
