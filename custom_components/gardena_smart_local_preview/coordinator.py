@@ -105,6 +105,7 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
                     async with session.ws_connect(
                         self.uri,
                         ssl=self._ssl_context,
+                        heartbeat=30,
                         headers={"Authorization": f"Basic {self.auth_b64}"},
                     ) as ws:
                         self._ws = ws
