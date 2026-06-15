@@ -25,26 +25,35 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     coordinator: GardenaSmartLocalCoordinator = entry.runtime_data
-    known_devices: set[str] = set()
+    known_valves: set[tuple[str, int]] = set()
 
     def _add_new_devices() -> None:
         if not coordinator.data:
             return
-        known_devices.intersection_update(coordinator.data)
+        known_valves.intersection_update(
+            (device.id, valve_id)
+            for device in coordinator.data.values()
+            if hasattr(device, "valve_ids")
+            for valve_id in device.valve_ids
+        )
         entities_by_subentry_id: dict[str | None, list] = {}
         for device in coordinator.data.values():
-            if device.id not in known_devices and hasattr(device, "valve_ids"):
-                known_devices.add(device.id)
-                sid = find_device_subentry_id(entry, device.id)
-                for valve_id in device.valve_ids:
-                    entities_by_subentry_id.setdefault(sid, []).append(
-                        GardenaValve(coordinator, device, valve_id)
-                    )
-                    _LOGGER.info(
-                        "Adding new valve entity for device %s, valve %s",
-                        device.id,
-                        valve_id,
-                    )
+            if not hasattr(device, "valve_ids"):
+                continue
+            sid = find_device_subentry_id(entry, device.id)
+            for valve_id in device.valve_ids:
+                key = (device.id, valve_id)
+                if key in known_valves:
+                    continue
+                known_valves.add(key)
+                entities_by_subentry_id.setdefault(sid, []).append(
+                    GardenaValve(coordinator, device, valve_id)
+                )
+                _LOGGER.info(
+                    "Adding new valve entity for device %s, valve %s",
+                    device.id,
+                    valve_id,
+                )
         for sid, entities in entities_by_subentry_id.items():
             async_add_entities(entities, config_subentry_id=sid)
 
