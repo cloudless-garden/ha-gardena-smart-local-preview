@@ -108,6 +108,48 @@ This integration is built around the [gardena-smart-local-api](https://github.co
 
 ## Contributing
 
+### Debugging
+
+#### On the gateway
+
+websocketd:
+
+```
+cat << EOF > /etc/systemd/system/websocketd.service.d/debug.conf
+[Service]
+Environment=RUST_LOG=debug
+EOF
+systemctl daemon-reload && systemctl restart websocketd.service
+```
+
+lemonbeatd:
+
+```
+cat << EOF > /etc/systemd/system/lemonbeatd.service.d/debug.conf
+[Service]
+Environment=RUST_LOG=debug
+EOF
+systemctl daemon-reload && systemctl restart lemonbeatd.service
+```
+
+lwm2mserver (add `--log-level=lwm2mserver.event=DEBUG` as a argument to lwm2mserver):
+
+```
+cat << EOF > /etc/systemd/system/lwm2mserver.service.d/debug.conf
+[Service]
+ExecStart=
+ExecStart=/usr/bin/lwm2mserver ppp0 --bind-to-device \\
+                                    --server-uri "coap://[fc00::6:100:0:0]" \\
+                                    --port 20017 \\
+                                    --lemonbeat-dongle-connection \\
+                                    --state-storage /var/lib/lwm2mserver \\
+                                    --lb-key-file /var/lib/lemonbeatd/Network_management/Network_key.json \\
+                                    --ipso-directories "\${IPSO_REGISTRY_DIR}/base" "\${IPSO_REGISTRY_DIR}/fwrolloutd" "\${IPSO_REGISTRY_DIR}/dev" \\
+                                    --log-level=lwm2mserver.event=DEBUG \\
+EOF
+systemctl daemon-reload && systemctl restart lwm2mserver.service
+```
+
 ### Licensing Compliance
 
 ```txt
