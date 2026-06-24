@@ -1,4 +1,17 @@
 {
+  "entity": {
+    "sensor": {
+      "firmware_update_state": {
+        "name": "Firmware-Update-Status",
+        "state": {
+          "idle": "Inaktiv",
+          "downloading": "Wird heruntergeladen",
+          "downloaded": "Heruntergeladen",
+          "updating": "Wird aktualisiert"
+        }
+      }
+    }
+  },
   "config_subentries": {
     "device": {
       "entry_type": "Gerät",
