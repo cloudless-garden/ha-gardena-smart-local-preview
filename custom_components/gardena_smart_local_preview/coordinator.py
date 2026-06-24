@@ -26,11 +26,13 @@ from gardena_smart_local_api.messages import (
     IngressMessageList,
 )
 from gardena_smart_local_api.sgtin96 import SGTIN96Info
+from gardena_smart_local_api.utils import deep_merge_dict
 
 INCLUDE_REPLY_TIMEOUT = 10
 EXCLUDE_REPLY_TIMEOUT = 10
 INCLUDABLE_DEVICE_HEARTBEAT_TIMEOUT = 25
 INCLUSION_TIMEOUT = 30
+FIRMWARE_REPLY_TIMEOUT = 10
 
 
 @dataclass
@@ -428,6 +430,36 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
 
         _LOGGER.error("Exclusion of device %s failed", device_id)
         return False
+
+    async def async_refresh_firmware(self, device_id: str) -> None:
+        device = self._devices.get(device_id)
+        if device is None:
+            return
+
+        request = (
+            device.build_refresh_available_firmware_version_obj()
+            + device.build_refresh_firmware_update_state_obj()
+        )
+        try:
+            replies = await self.send_request(
+                device_id, request, wait_for_response_sec=FIRMWARE_REPLY_TIMEOUT
+            )
+        except asyncio.TimeoutError:
+            _LOGGER.debug("Timeout refreshing firmware state for %s", device_id)
+            return
+        except Exception as err:
+            _LOGGER.debug("Error refreshing firmware state for %s: %s", device_id, err)
+            return
+
+        updated = False
+        for msg in replies:
+            if isinstance(msg, Reply) and msg.success and msg.payload:
+                data = msg.payload.get(device_id)
+                if data:
+                    deep_merge_dict(device.data, data)
+                    updated = True
+        if updated:
+            self.async_set_updated_data(self._devices)
 
     def _update_device(self, device: Device) -> None:
         is_new = device.id not in self._devices
