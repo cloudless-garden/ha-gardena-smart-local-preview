@@ -26,7 +26,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .coordinator import GardenaSmartLocalCoordinator
 from .entity import GardenaEntity, find_device_subentry_id
-from gardena_smart_local_api.devices.device import Device
+from gardena_smart_local_api.devices.device import Device, FirmwareUpdateState
 from gardena_smart_local_api.devices import Pump
 
 _LOGGER = logging.getLogger(__name__)
@@ -44,6 +44,7 @@ async def async_setup_entry(
     known_battery_devices: set[str] = set()
     known_rf_link_devices: set[str] = set()
     known_pump_devices: set[str] = set()
+    known_firmware_state_devices: set[str] = set()
 
     def _add_new_devices() -> None:
         if not coordinator.data:
@@ -55,6 +56,7 @@ async def async_setup_entry(
             known_battery_devices,
             known_rf_link_devices,
             known_pump_devices,
+            known_firmware_state_devices,
         ):
             cache.intersection_update(coordinator.data)
         entities_by_subentry_id: dict[str | None, list] = {}
@@ -110,6 +112,14 @@ async def async_setup_entry(
                     ]
                 )
                 _LOGGER.info("Adding new pump sensor entities for device %s", device.id)
+            if device.id not in known_firmware_state_devices:
+                known_firmware_state_devices.add(device.id)
+                device_entities.append(
+                    GardenaFirmwareUpdateStateSensor(coordinator, device)
+                )
+                _LOGGER.info(
+                    "Adding firmware update state sensor for device %s", device.id
+                )
             if device_entities:
                 sid = find_device_subentry_id(entry, device.id)
                 entities_by_subentry_id.setdefault(sid, []).extend(device_entities)
@@ -355,4 +365,31 @@ class GardenaPumpStateSensor(GardenaEntity, SensorEntity):
         if not device:
             return None
         state = device.pump_state
+        return str(state) if state is not None else None
+
+
+class GardenaFirmwareUpdateStateSensor(GardenaEntity, SensorEntity):
+    _attr_device_class = SensorDeviceClass.ENUM
+    _attr_options = [str(state) for state in FirmwareUpdateState]
+
+    def __init__(
+        self,
+        coordinator: GardenaSmartLocalCoordinator,
+        device: Device,
+    ) -> None:
+        super().__init__(coordinator, device)
+        self._attr_unique_id = f"{device.id}_firmware_update_state"
+        self._attr_translation_key = "firmware_update_state"
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        await self.coordinator.async_refresh_firmware(self._device.id)
+
+    @property
+    def native_value(self) -> str | None:
+        device = self.coordinator.data.get(self._device.id)
+        if not device:
+            return None
+        state = device.firmware_update_state
         return str(state) if state is not None else None

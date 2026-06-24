@@ -1,4 +1,17 @@
 {
+  "entity": {
+    "sensor": {
+      "firmware_update_state": {
+        "name": "Firmware Update State",
+        "state": {
+          "idle": "Idle",
+          "downloading": "Downloading",
+          "downloaded": "Downloaded",
+          "updating": "Updating"
+        }
+      }
+    }
+  },
   "config_subentries": {
     "device": {
       "entry_type": "Device",
