@@ -26,8 +26,12 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .coordinator import GardenaSmartLocalCoordinator
 from .entity import GardenaEntity, find_device_subentry_id
-from gardena_smart_local_api.devices.device import Device
-from gardena_smart_local_api.devices import Pump
+from gardena_smart_local_api.devices import (
+    Device,
+    Gen1WaterControl,
+    Gen2WaterControl,
+    Pump,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -62,7 +66,15 @@ async def async_setup_entry(
             device_entities = []
             if hasattr(device, "temperature") and device.id not in known_temp_devices:
                 known_temp_devices.add(device.id)
-                device_entities.append(GardenaTemperatureSensor(coordinator, device))
+                device_entities.append(
+                    GardenaTemperatureSensor(
+                        coordinator,
+                        device,
+                        enabled_default=not isinstance(
+                            device, (Gen1WaterControl, Gen2WaterControl)
+                        ),
+                    )
+                )
                 _LOGGER.info(
                     "Adding new temperature sensor entity for device %s", device.id
                 )
@@ -124,6 +136,7 @@ class GardenaTemperatureSensor(GardenaEntity, SensorEntity):
         self,
         coordinator: GardenaSmartLocalCoordinator,
         device: Device,
+        enabled_default: bool = True,
     ) -> None:
         super().__init__(coordinator, device)
         self._attr_unique_id = f"{device.id}_temperature"
@@ -131,6 +144,7 @@ class GardenaTemperatureSensor(GardenaEntity, SensorEntity):
         self._attr_device_class = SensorDeviceClass.TEMPERATURE
         self._attr_state_class = SensorStateClass.MEASUREMENT
         self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
+        self._attr_entity_registry_enabled_default = enabled_default
 
     @property
     def native_value(self) -> float | None:
