@@ -28,12 +28,14 @@ async def async_setup_entry(
     coordinator: GardenaSmartLocalCoordinator = entry.runtime_data
     known_devices: set[str] = set()
     known_pump_devices: set[str] = set()
+    known_schedule_devices: set[str] = set()
 
     def _add_new_devices() -> None:
         if not coordinator.data:
             return
         known_devices.intersection_update(coordinator.data)
         known_pump_devices.intersection_update(coordinator.data)
+        known_schedule_devices.intersection_update(coordinator.data)
         entities_by_subentry_id: dict[str | None, list] = {}
         for device in coordinator.data.values():
             if hasattr(device, "build_identify_obj") and device.id not in known_devices:
@@ -54,6 +56,16 @@ async def async_setup_entry(
                     ]
                 )
                 _LOGGER.info("Adding pump reset buttons for device %s", device.id)
+            if (
+                hasattr(device, "schedule_count")
+                and device.id not in known_schedule_devices
+            ):
+                known_schedule_devices.add(device.id)
+                sid = find_device_subentry_id(entry, device.id)
+                entities_by_subentry_id.setdefault(sid, []).append(
+                    GardenaClearSchedulesButton(coordinator, device)
+                )
+                _LOGGER.info("Adding clear schedules button for device %s", device.id)
         for sid, entities in entities_by_subentry_id.items():
             async_add_entities(entities, config_subentry_id=sid)
 
@@ -121,3 +133,24 @@ class GardenaPumpResetTemperatureMinMaxButton(GardenaEntity, ButtonEntity):
             self._device.build_reset_outlet_temperature_min_max_obj(),
         )
         _LOGGER.info("Reset temperature min/max for device %s", self._device.id)
+
+
+class GardenaClearSchedulesButton(GardenaEntity, ButtonEntity):
+    _attr_entity_category = EntityCategory.CONFIG
+    _attr_entity_registry_enabled_default = False
+    _attr_has_entity_name = True
+    _attr_name = "Clear Schedules"
+    _attr_icon = "mdi:delete-alert-outline"
+
+    def __init__(
+        self, coordinator: GardenaSmartLocalCoordinator, device: Device
+    ) -> None:
+        super().__init__(coordinator, device)
+        self._attr_unique_id = f"{device.id}_clear_schedules"
+
+    async def async_press(self) -> None:
+        await self.coordinator.send_request(
+            self._device.id,
+            self._device.build_clear_schedules_obj(),
+        )
+        _LOGGER.info("Cleared schedules for device %s", self._device.id)
