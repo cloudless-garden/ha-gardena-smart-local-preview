@@ -44,6 +44,7 @@ async def async_setup_entry(
     known_battery_devices: set[str] = set()
     known_rf_link_devices: set[str] = set()
     known_pump_devices: set[str] = set()
+    known_schedule_devices: set[str] = set()
 
     def _add_new_devices() -> None:
         if not coordinator.data:
@@ -55,6 +56,7 @@ async def async_setup_entry(
             known_battery_devices,
             known_rf_link_devices,
             known_pump_devices,
+            known_schedule_devices,
         ):
             cache.intersection_update(coordinator.data)
         entities_by_subentry_id: dict[str | None, list] = {}
@@ -110,6 +112,13 @@ async def async_setup_entry(
                     ]
                 )
                 _LOGGER.info("Adding new pump sensor entities for device %s", device.id)
+            if (
+                hasattr(device, "schedule_count")
+                and device.id not in known_schedule_devices
+            ):
+                known_schedule_devices.add(device.id)
+                device_entities.append(GardenaScheduleCountSensor(coordinator, device))
+                _LOGGER.info("Adding schedule count sensor for device %s", device.id)
             if device_entities:
                 sid = find_device_subentry_id(entry, device.id)
                 entities_by_subentry_id.setdefault(sid, []).extend(device_entities)
@@ -356,3 +365,27 @@ class GardenaPumpStateSensor(GardenaEntity, SensorEntity):
             return None
         state = device.pump_state
         return str(state) if state is not None else None
+
+
+class GardenaScheduleCountSensor(GardenaEntity, SensorEntity):
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_entity_registry_enabled_default = False
+    _attr_has_entity_name = True
+    _attr_name = "Schedule Count"
+    _attr_icon = "mdi:calendar-check"
+
+    def __init__(
+        self,
+        coordinator: GardenaSmartLocalCoordinator,
+        device: Device,
+    ) -> None:
+        super().__init__(coordinator, device)
+        self._attr_unique_id = f"{device.id}_schedule_count"
+        self._attr_state_class = SensorStateClass.MEASUREMENT
+
+    @property
+    def native_value(self) -> int | None:
+        device = self.coordinator.data.get(self._device.id)
+        if not device:
+            return None
+        return device.schedule_count
