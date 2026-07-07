@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import callback
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -49,3 +50,23 @@ class GardenaEntity(CoordinatorEntity[GardenaSmartLocalCoordinator]):
     def available(self) -> bool:
         device = self.coordinator.data.get(self._device.id)
         return bool(device and device.is_online)
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Keep the device registry sw_version in sync.
+
+        DeviceInfo is only applied when the entity is added, so after a
+        firmware up-/downgrade the device page would keep showing the old
+        version until Home Assistant restarts.
+        """
+        device = self.coordinator.data.get(self._device.id)
+        if (
+            device
+            and device.software_version
+            and self.device_entry
+            and self.device_entry.sw_version != device.software_version
+        ):
+            dr.async_get(self.hass).async_update_device(
+                self.device_entry.id, sw_version=device.software_version
+            )
+        super()._handle_coordinator_update()
