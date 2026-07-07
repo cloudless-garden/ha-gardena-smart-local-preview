@@ -96,6 +96,9 @@ After adding the configuration, restart Home Assistant.
 | GARDENA smart SILENO free                  | 19921-22, 19922-22, 19923-22               | Lawn mower                                                  |
 | Flymo UltraLife                            | 970620501, 970620701, 970715101, 970715201 | Lawn mower                                                  |
 
+See [gardena-smart-local-api] for more details about the device types.
+
+[gardena-smart-local-api]: https://github.com/cloudless-garden/gardena-smart-local-api
 ## Not Supported Devices
 
 | Device                                | Article no.                                | Notes                                                       |
@@ -104,7 +107,7 @@ After adding the configuration, restart Home Assistant.
 
 ## Related Projects
 
-This integration is built around the [gardena-smart-local-api](https://github.com/cloudless-garden/gardena-smart-local-api) library.
+This integration is built around the [gardena-smart-local-api] library.
 
 ## Contributing
 
