@@ -18,6 +18,10 @@ from gardena_smart_local_api.devices.irrigation import PumpOperatingMode
 
 _LOGGER = logging.getLogger(__name__)
 
+# Actions send commands to the gateway's local websocket — cap at 1 so HA
+# serializes them instead of firing concurrent commands at the same connection
+PARALLEL_UPDATES = 1
+
 _MODE_TO_OPTION: dict[PumpOperatingMode, str] = {
     PumpOperatingMode.SCHEDULED: "scheduled",
     PumpOperatingMode.AUTOMATIC: "automatic",

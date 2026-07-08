@@ -18,6 +18,10 @@ from gardena_smart_local_api.devices import PowerAdapter, Pump
 
 _LOGGER = logging.getLogger(__name__)
 
+# Actions send commands to the gateway's local websocket — cap at 1 so HA
+# serializes them instead of firing concurrent commands at the same connection
+PARALLEL_UPDATES = 1
+
 # used as "indefinitly" in the official app
 DEFAULT_ON_DURATION_SECONDS = 16777216
 

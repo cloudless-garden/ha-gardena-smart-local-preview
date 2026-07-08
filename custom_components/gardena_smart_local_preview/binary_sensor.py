@@ -20,6 +20,10 @@ from gardena_smart_local_api.devices.device import Device
 
 _LOGGER = logging.getLogger(__name__)
 
+# State comes only from the coordinator's push (no polling, no actions) —
+# there is nothing here for PARALLEL_UPDATES to throttle
+PARALLEL_UPDATES = 0
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
