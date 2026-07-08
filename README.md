@@ -71,6 +71,14 @@ gardena_smart_local_preview:
 
 After adding the configuration, restart Home Assistant.
 
+## Removal
+
+1. Go to **Settings → Devices & Services**
+2. Find the "GARDENA smart local (preview)" integration and click on it to see its entries (gateways)
+3. On the gateway integration entry, click the three-dot menu and select **Delete**
+
+If installed via HACS, you can also remove the integration files there: open HACS, find "GARDENA smart local (preview)", click on the three dots on the right and then on **Remove**. For a manual installation, delete the `custom_components/gardena_smart_local_preview` directory instead.
+
 ## Supported Devices
 
 | Device                                     | Article no.                                | Entities                                                    |
