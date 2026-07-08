@@ -9,6 +9,7 @@ from dataclasses import dataclass
 
 import aiohttp
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util.ssl import get_default_no_verify_context
 
@@ -104,34 +105,32 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
             consumer_task = None
             try:
                 _LOGGER.debug("Connecting to GARDENA smart Gateway at %s", self.uri)
-                async with aiohttp.ClientSession() as session:
-                    async with session.ws_connect(
-                        self.uri,
-                        ssl=self._ssl_context,
-                        heartbeat=30,
-                        headers={"Authorization": f"Basic {self.auth_b64}"},
-                    ) as ws:
-                        self._ws = ws
-                        _LOGGER.info(
-                            "Connected to GARDENA smart Gateway at %s", self.uri
-                        )
+                session = async_get_clientsession(self.hass)
+                async with session.ws_connect(
+                    self.uri,
+                    ssl=self._ssl_context,
+                    heartbeat=30,
+                    headers={"Authorization": f"Basic {self.auth_b64}"},
+                ) as ws:
+                    self._ws = ws
+                    _LOGGER.info("Connected to GARDENA smart Gateway at %s", self.uri)
 
-                        reader_task = self.hass.async_create_background_task(
-                            self._ws_reader(ws),
-                            "gardena_smart_local_preview_ws_reader",
-                        )
-                        consumer_task = self.hass.async_create_background_task(
-                            self._msg_consumer(),
-                            "gardena_smart_local_preview_msg_consumer",
-                        )
+                    reader_task = self.hass.async_create_background_task(
+                        self._ws_reader(ws),
+                        "gardena_smart_local_preview_ws_reader",
+                    )
+                    consumer_task = self.hass.async_create_background_task(
+                        self._msg_consumer(),
+                        "gardena_smart_local_preview_msg_consumer",
+                    )
 
-                        await self._do_discovery()
+                    await self._do_discovery()
 
-                        # Block until the reader exits (disconnect / error)
-                        await reader_task
-                        _LOGGER.info(
-                            "Disconnected from GARDENA smart Gateway, reconnecting"
-                        )
+                    # Block until the reader exits (disconnect / error)
+                    await reader_task
+                    _LOGGER.info(
+                        "Disconnected from GARDENA smart Gateway, reconnecting"
+                    )
 
             except asyncio.CancelledError:
                 _LOGGER.debug("WebSocket loop cancelled")
