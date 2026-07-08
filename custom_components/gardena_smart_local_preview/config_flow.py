@@ -81,7 +81,7 @@ class GardenaSmartLocalConfigFlow(ConfigFlow, domain=DOMAIN):
         port = discovery_info.port or DEFAULT_PORT
 
         await self.async_set_unique_id(name)
-        self._abort_if_unique_id_configured()
+        self._abort_if_unique_id_configured(updates={CONF_HOST: host, CONF_PORT: port})
 
         self._discovered_host = host
         self._discovered_port = port
