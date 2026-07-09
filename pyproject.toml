@@ -20,3 +20,7 @@ dev = [
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+
+[tool.coverage.run]
+relative_files = true
+source = ["custom_components/gardena_smart_local_preview"]

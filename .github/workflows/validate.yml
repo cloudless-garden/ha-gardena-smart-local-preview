@@ -41,8 +41,20 @@ jobs:
   tests:
     name: Tests
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
     steps:
       - uses: actions/checkout@v6
       - uses: astral-sh/setup-uv@v6
       - run: uv sync --group dev
-      - run: uv run pytest tests/ -v
+      - name: Run tests with coverage
+        run: >
+          uv run pytest tests/ -v
+          --cov=custom_components.gardena_smart_local_preview
+          --cov-report=term --cov-report=xml
+      - name: Coverage comment
+        if: github.event_name == 'pull_request'
+        uses: py-cov-action/python-coverage-comment-action@v3
+        with:
+          GITHUB_TOKEN: ${{ github.token }}
