@@ -180,7 +180,8 @@ async def _async_try_connect(
             URL.build(scheme="wss", host=host, port=port),
             ssl=ssl_context,
             headers={"Authorization": f"Basic {auth_b64}"},
-            timeout=aiohttp.ClientTimeout(total=10),
+            # ty doesn't resolve aiohttp's legacy attr.ib()-based __init__.
+            timeout=aiohttp.ClientWSTimeout(ws_receive=10),  # ty: ignore[unknown-argument]
         ) as ws:
             await ws.close()
     except aiohttp.WSServerHandshakeError as err:
