@@ -18,20 +18,34 @@ Home Assistant integration for GARDENA smart devices using local communication (
 ## Enabling WebSocket Support on the Gateway
 
 The still experimental WebSocket service running on the gateway is disabled by default.
-At least for now, you need shell access to your GARDENA smart Gateway to enable it.
-The instructions for that can be found in the [smart-garden-gateway-public] repository.
+You can enable it through the gateway's web interface by visiting e.g.: https://GARDENA-123456.local
 
-On the gateway, run the following commands:
+> [!TIP]
+> You can also use the IP address found under "Garden Profile" in the GARDENA smart system app.
 
+> [!NOTE]
+> The password is the first block of the gateway ID printed on the back of the device, e.g.:
+>
+> ID: `1234abcd-996c-48f7-83dc-d2d1bac08e7e` → password: `1234abcd`
+
+The advanced options are hidden behind a tiny grey arrow at the bottom of the page.
+
+Alternatively, you can enable WebSocket support using e.g. `curl`:
 ```txt
-touch /etc/enable-websocketd
-systemctl restart firewall
-systemctl start websocketd
+gateway=GARDENA-123456.local
+password=1234abcd
+
+session=$(curl -H 'Content-Type: application/json' -d '{"password": "'"$password"'"}' --insecure https://$gateway/login | jq -r .session)
+
+curl -X PUT -H "X-session: $session" -H 'Content-Type: application/json' -d '{"enable": true}' --insecure https://$gateway/websocket_api
 ```
 
 The service `websocketd` is now listening on port 8443/TCP.
 
-[smart-garden-gateway-public]: https://github.com/husqvarnagroup/smart-garden-gateway-public#getting-access
+To disable WebSocket Support, you can run:
+```txt
+curl -X PUT -H "X-session: $session" -H 'Content-Type: application/json' -d '{"enable": false}' --insecure https://$gateway/websocket_api
+```
 
 ## Installation
 
@@ -54,10 +68,6 @@ The service `websocketd` is now listening on port 8443/TCP.
 After installation, go to **Settings → Devices & Services → Add Integration** and search for "GARDENA smart local". Enter the IP address or hostname of your gateway and the password.
 
 The gateway can also be discovered automatically via Zeroconf — look for a notification in Home Assistant after installation.
-
-> [!TIP]
-> The password is the first block of the gateway ID printed on the back of the device.
-> (example: `0824b95b-996c-48f7-83dc-d2d1bac08e7e` → password: `0824b95b`)
 
 ### YAML configuration (legacy)
 
