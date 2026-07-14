@@ -5,9 +5,11 @@
 from __future__ import annotations
 
 import logging
+from typing import Protocol, cast
 
 from gardena_smart_local_api.devices import Pump
 from gardena_smart_local_api.devices.device import Device
+from gardena_smart_local_api.messages import EgressMessageList
 from homeassistant.components.button import ButtonEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
@@ -22,6 +24,14 @@ _LOGGER = logging.getLogger(__name__)
 # Actions send commands to the gateway's local websocket — cap at 1 so HA
 # serializes them instead of firing concurrent commands at the same connection
 PARALLEL_UPDATES = 1
+
+
+class _Identifiable(Protocol):
+    def build_identify_obj(self) -> EgressMessageList: ...
+
+
+class _ScheduleClearable(Protocol):
+    def build_clear_schedules_obj(self) -> EgressMessageList: ...
 
 
 async def async_setup_entry(
@@ -88,7 +98,9 @@ class GardenaIdentifyButton(GardenaEntity, ButtonEntity):
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
     async def async_press(self) -> None:
-        await self._send_confirmed_command(self._device.build_identify_obj())
+        await self._send_confirmed_command(
+            cast(_Identifiable, self._device).build_identify_obj()
+        )
         _LOGGER.info("Sent identify request for device %s", self._device.id)
 
 
@@ -101,7 +113,7 @@ class GardenaPumpResetFlowButton(GardenaEntity, ButtonEntity):
 
     async def async_press(self) -> None:
         await self._send_confirmed_command(
-            self._device.build_reset_flow_resettable_obj()
+            cast(Pump, self._device).build_reset_flow_resettable_obj()
         )
         _LOGGER.info("Reset resettable flow for device %s", self._device.id)
 
@@ -115,7 +127,7 @@ class GardenaPumpResetValveErrorsButton(GardenaEntity, ButtonEntity):
 
     async def async_press(self) -> None:
         await self._send_confirmed_command(
-            self._device.build_reset_all_valve_errors_obj()
+            cast(Pump, self._device).build_reset_all_valve_errors_obj()
         )
         _LOGGER.info("Reset valve errors for device %s", self._device.id)
 
@@ -129,7 +141,7 @@ class GardenaPumpResetTemperatureMinMaxButton(GardenaEntity, ButtonEntity):
 
     async def async_press(self) -> None:
         await self._send_confirmed_command(
-            self._device.build_reset_outlet_temperature_min_max_obj()
+            cast(Pump, self._device).build_reset_outlet_temperature_min_max_obj()
         )
         _LOGGER.info("Reset temperature min/max for device %s", self._device.id)
 
@@ -147,5 +159,7 @@ class GardenaClearSchedulesButton(GardenaEntity, ButtonEntity):
         self._attr_unique_id = f"{device.id}_clear_schedules"
 
     async def async_press(self) -> None:
-        await self._send_confirmed_command(self._device.build_clear_schedules_obj())
+        await self._send_confirmed_command(
+            cast(_ScheduleClearable, self._device).build_clear_schedules_obj()
+        )
         _LOGGER.info("Cleared schedules for device %s", self._device.id)

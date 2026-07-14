@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, cast
 
 from gardena_smart_local_api.devices import PowerAdapter, Pump
 from homeassistant.components.switch import SwitchDeviceClass, SwitchEntity
@@ -81,12 +81,16 @@ class GardenaPowerSwitch(GardenaEntity, SwitchEntity):
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         await self._send_confirmed_command(
-            self._device.build_enable_output_obj(DEFAULT_ON_DURATION_SECONDS)
+            cast(PowerAdapter, self._device).build_enable_output_obj(
+                DEFAULT_ON_DURATION_SECONDS
+            )
         )
         _LOGGER.info("Turning on switch %s", self._device.id)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
-        await self._send_confirmed_command(self._device.build_disable_output_obj())
+        await self._send_confirmed_command(
+            cast(PowerAdapter, self._device).build_disable_output_obj()
+        )
         _LOGGER.info("Turning off switch %s", self._device.id)
 
 
@@ -109,10 +113,10 @@ class GardenaPumpSwitch(GardenaEntity, SwitchEntity):
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         await self._send_confirmed_command(
-            self._device.build_start_obj(DEFAULT_ON_DURATION_SECONDS)
+            cast(Pump, self._device).build_start_obj(DEFAULT_ON_DURATION_SECONDS)
         )
         _LOGGER.info("Turning on pump %s", self._device.id)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
-        await self._send_confirmed_command(self._device.build_stop_obj())
+        await self._send_confirmed_command(cast(Pump, self._device).build_stop_obj())
         _LOGGER.info("Turning off pump %s", self._device.id)
