@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, Protocol, cast
 
 from homeassistant.components.valve import ValveEntity, ValveEntityFeature
 from homeassistant.config_entries import ConfigEntry
@@ -15,12 +15,23 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from .coordinator import GardenaSmartLocalCoordinator
 from .entity import GardenaEntity, find_device_subentry_id
 from gardena_smart_local_api.devices import Device
+from gardena_smart_local_api.messages import EgressMessageList
 
 _LOGGER = logging.getLogger(__name__)
 
 # Actions send commands to the gateway's local websocket — cap at 1 so HA
 # serializes them instead of firing concurrent commands at the same connection
 PARALLEL_UPDATES = 1
+
+
+class _ValveCapableDevice(Protocol):
+    valve_ids: list[int]
+
+    def build_open_valve_obj(
+        self, valve_id: int = 0, duration_seconds: int = 0
+    ) -> EgressMessageList: ...
+
+    def build_close_valve_obj(self, valve_id: int = 0) -> EgressMessageList: ...
 
 
 async def async_setup_entry(
@@ -75,7 +86,8 @@ class GardenaValve(GardenaEntity, ValveEntity):
         super().__init__(coordinator, device)
         self._valve_id = valve_id
         self._attr_unique_id = f"{device.id}_valve_{valve_id}"
-        self._attr_name = f"Valve {valve_id + 1}" if len(device.valve_ids) > 1 else None
+        valve_count = len(cast(_ValveCapableDevice, device).valve_ids)
+        self._attr_name = f"Valve {valve_id + 1}" if valve_count > 1 else None
         self._attr_reports_position = False
         self._attr_supported_features = (
             ValveEntityFeature.OPEN | ValveEntityFeature.CLOSE
@@ -101,13 +113,17 @@ class GardenaValve(GardenaEntity, ValveEntity):
     async def async_open_valve(self, **kwargs: Any) -> None:
         await self.coordinator.send_request(
             self._device.id,
-            self._device.build_open_valve_obj(self._valve_id, 1800),
+            cast(_ValveCapableDevice, self._device).build_open_valve_obj(
+                self._valve_id, 1800
+            ),
         )
         _LOGGER.info("Opening valve %s valve_id=%s", self._device.id, self._valve_id)
 
     async def async_close_valve(self, **kwargs: Any) -> None:
         await self.coordinator.send_request(
             self._device.id,
-            self._device.build_close_valve_obj(self._valve_id),
+            cast(_ValveCapableDevice, self._device).build_close_valve_obj(
+                self._valve_id
+            ),
         )
         _LOGGER.info("Closing valve %s valve_id=%s", self._device.id, self._valve_id)

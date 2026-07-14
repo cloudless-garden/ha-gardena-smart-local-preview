@@ -117,6 +117,8 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
             consumer_task = None
             try:
                 _LOGGER.debug("Connecting to GARDENA smart Gateway at %s", self.uri)
+                # Always set by async_connect() before this task starts.
+                assert self._ssl_context is not None
                 session = async_get_clientsession(self.hass)
                 async with session.ws_connect(
                     self.uri,
