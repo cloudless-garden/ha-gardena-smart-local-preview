@@ -153,6 +153,71 @@ async def test_ws_loop_reconnects_after_exception(
     assert session.ws_connect.call_count == 2
 
 
+async def test_ws_loop_401_starts_reauth_and_stops_retrying(
+    hass: HomeAssistant,
+    coordinator: GardenaSmartLocalCoordinator,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    coordinator.config_entry = MagicMock()
+    session = _session_with(
+        [
+            aiohttp.WSServerHandshakeError(
+                request_info=MagicMock(), history=(), status=401, message="Unauthorized"
+            )
+        ]
+    )
+
+    with (
+        patch(PATCH_CLIENTSESSION, return_value=session),
+        caplog.at_level(logging.ERROR),
+    ):
+        with pytest.raises(aiohttp.WSServerHandshakeError):
+            await coordinator.async_connect()
+        await _pump()
+
+    assert session.ws_connect.call_count == 1
+    coordinator.config_entry.async_start_reauth.assert_called_once_with(hass)
+    assert "Authentication failed" in caplog.text
+    assert coordinator._task.done()
+
+
+async def test_ws_loop_non_401_handshake_error_reconnects(
+    hass: HomeAssistant,
+    coordinator: GardenaSmartLocalCoordinator,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    coordinator.config_entry = MagicMock()
+    session = _session_with(
+        [
+            aiohttp.WSServerHandshakeError(
+                request_info=MagicMock(),
+                history=(),
+                status=500,
+                message="Server error",
+            ),
+            asyncio.CancelledError(),
+        ]
+    )
+    sleep_calls: list[float] = []
+    real_sleep = asyncio.sleep
+
+    async def fake_sleep(delay: float) -> None:
+        sleep_calls.append(delay)
+
+    with (
+        patch(PATCH_CLIENTSESSION, return_value=session),
+        patch.object(coordinator_module.asyncio, "sleep", fake_sleep),
+        caplog.at_level(logging.ERROR),
+    ):
+        with pytest.raises(aiohttp.WSServerHandshakeError):
+            await coordinator.async_connect()
+        await real_sleep(0.05)
+
+    assert sleep_calls == [5]
+    assert session.ws_connect.call_count == 2
+    coordinator.config_entry.async_start_reauth.assert_not_called()
+
+
 async def test_ws_loop_cancelled_on_connect_breaks_cleanly(
     hass: HomeAssistant,
     coordinator: GardenaSmartLocalCoordinator,

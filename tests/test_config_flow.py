@@ -293,6 +293,65 @@ async def test_reconfigure_cannot_connect(hass: HomeAssistant) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Reauthentication flow
+# ---------------------------------------------------------------------------
+
+
+async def test_reauth_success(hass: HomeAssistant, mock_setup_entry) -> None:
+    """Successful reauthentication updates the stored password."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id=MOCK_HOST,
+        data={CONF_HOST: MOCK_HOST, CONF_PORT: MOCK_PORT, CONF_PASSWORD: "old-pw"},
+    )
+    entry.add_to_hass(hass)
+
+    result = await entry.start_reauth_flow(hass)
+    assert result["type"] == "form"
+    assert result["step_id"] == "reauth_confirm"
+
+    with patch(PATCH_TRY_CONNECT, return_value=None):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {CONF_PASSWORD: MOCK_PASSWORD}
+        )
+
+    assert result["type"] == "abort"
+    assert result["reason"] == "reauth_successful"
+    assert entry.data[CONF_PASSWORD] == MOCK_PASSWORD
+    assert entry.data[CONF_HOST] == MOCK_HOST
+
+
+async def test_reauth_invalid_auth(hass: HomeAssistant) -> None:
+    """Wrong password during reauth keeps the form open with an error."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id=MOCK_HOST,
+        data={CONF_HOST: MOCK_HOST, CONF_PORT: MOCK_PORT, CONF_PASSWORD: "old-pw"},
+    )
+    entry.add_to_hass(hass)
+
+    result = await entry.start_reauth_flow(hass)
+
+    with patch(
+        "aiohttp.ClientSession.ws_connect",
+        side_effect=aiohttp.WSServerHandshakeError(
+            request_info=MagicMock(),
+            history=(),
+            status=401,
+            message="Unauthorized",
+        ),
+    ):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {CONF_PASSWORD: "still-wrong"}
+        )
+
+    assert result["type"] == "form"
+    assert result["step_id"] == "reauth_confirm"
+    assert result["errors"] == {"base": "invalid_auth"}
+    assert entry.data[CONF_PASSWORD] == "old-pw"
+
+
+# ---------------------------------------------------------------------------
 # Import flow (YAML)
 # ---------------------------------------------------------------------------
 

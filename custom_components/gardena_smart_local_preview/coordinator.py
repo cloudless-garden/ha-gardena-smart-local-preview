@@ -163,6 +163,25 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
                 if self._first_connect_result and not self._first_connect_result.done():
                     self._first_connect_result.cancel()
                 break
+            except aiohttp.WSServerHandshakeError as err:
+                if err.status == 401:
+                    _LOGGER.error(
+                        "Authentication failed connecting to GARDENA smart Gateway "
+                        "at %s",
+                        self.uri,
+                    )
+                    if self.config_entry:
+                        self.config_entry.async_start_reauth(self.hass)
+                    if (
+                        self._first_connect_result
+                        and not self._first_connect_result.done()
+                    ):
+                        self._first_connect_result.set_exception(err)
+                    break
+                if self._first_connect_result and not self._first_connect_result.done():
+                    self._first_connect_result.set_exception(err)
+                _LOGGER.error("WebSocket error: %s", err)
+                await asyncio.sleep(5)
             except Exception as err:
                 if self._first_connect_result and not self._first_connect_result.done():
                     self._first_connect_result.set_exception(err)
