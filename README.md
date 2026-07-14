@@ -119,6 +119,12 @@ This integration is built around the [gardena-smart-local-api] library.
 
 ## Contributing
 
+### Debugging
+
+#### Debugging on the Gateway
+
+For hints on debugging on the gateway, please have a look at the README file in [gardena-smart-local-api].
+
 ### Licensing Compliance
 
 ```txt
