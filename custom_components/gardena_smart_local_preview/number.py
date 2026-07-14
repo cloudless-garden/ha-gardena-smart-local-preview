@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import logging
+from typing import cast
 
 from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.config_entries import ConfigEntry
@@ -15,7 +16,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from .coordinator import GardenaSmartLocalCoordinator
 from .entity import GardenaEntity, find_device_subentry_id
 from gardena_smart_local_api.devices.device import Device
-from gardena_smart_local_api.devices import Pump
+from gardena_smart_local_api.devices import Gen1WaterControl, Pump
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -97,7 +98,9 @@ class GardenaButtonConfigTime(GardenaEntity, NumberEntity):
     async def async_set_native_value(self, value: float) -> None:
         await self.coordinator.send_request(
             self._device.id,
-            self._device.build_set_button_config_time_obj(int(value) * 60),
+            cast(Gen1WaterControl, self._device).build_set_button_config_time_obj(
+                int(value) * 60
+            ),
         )
         _LOGGER.info(
             "Set button config time for device %s to %s minutes",
@@ -133,7 +136,7 @@ class GardenaPumpTurnOnPressure(GardenaEntity, NumberEntity):
     async def async_set_native_value(self, value: float) -> None:
         await self.coordinator.send_request(
             self._device.id,
-            self._device.build_set_turn_on_pressure_obj(value),
+            cast(Pump, self._device).build_set_turn_on_pressure_obj(value),
         )
         _LOGGER.info(
             "Set turn-on pressure for device %s to %s bar",
@@ -169,7 +172,7 @@ class GardenaPumpDrippingAlert(GardenaEntity, NumberEntity):
     async def async_set_native_value(self, value: float) -> None:
         await self.coordinator.send_request(
             self._device.id,
-            self._device.build_set_dripping_alert_obj(int(value)),
+            cast(Pump, self._device).build_set_dripping_alert_obj(int(value)),
         )
         _LOGGER.info(
             "Set dripping alert timeout for device %s to %s seconds",
