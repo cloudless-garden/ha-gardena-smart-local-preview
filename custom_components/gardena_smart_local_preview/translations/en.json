@@ -76,6 +76,16 @@
           "host": "IP address or hostname of your GARDENA smart Gateway",
           "password": "First block of the gateway ID printed on the back of the device (e.g. `0824b95b` from `0824b95b-996c-48f7-83dc-…`)."
         }
+      },
+      "reauth_confirm": {
+        "title": "Reauthenticate GARDENA smart Gateway",
+        "description": "The password for your GARDENA smart Gateway is no longer valid. Enter the current password to reconnect.",
+        "data": {
+          "password": "Password"
+        },
+        "data_description": {
+          "password": "First block of the gateway ID printed on the back of the device (e.g. `0824b95b` from `0824b95b-996c-48f7-83dc-…`)."
+        }
       }
     },
     "error": {
@@ -86,7 +96,8 @@
     "abort": {
       "already_configured": "Gateway is already configured",
       "already_in_progress": "It seems the gateway has been autodetected, click \"Add\" on discovered integration instead",
-      "reconfigure_successful": "GARDENA smart Gateway settings updated"
+      "reconfigure_successful": "GARDENA smart Gateway settings updated",
+      "reauth_successful": "Re-authentication was successful"
     }
   }
 }

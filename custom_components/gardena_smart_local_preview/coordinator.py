@@ -137,6 +137,18 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
             except asyncio.CancelledError:
                 _LOGGER.debug("WebSocket loop cancelled")
                 break
+            except aiohttp.WSServerHandshakeError as err:
+                if err.status == 401:
+                    _LOGGER.error(
+                        "Authentication failed connecting to GARDENA smart Gateway "
+                        "at %s",
+                        self.uri,
+                    )
+                    if self.config_entry:
+                        self.config_entry.async_start_reauth(self.hass)
+                    break
+                _LOGGER.error("WebSocket error: %s", err)
+                await asyncio.sleep(5)
             except Exception as err:
                 _LOGGER.error("WebSocket error: %s", err)
                 await asyncio.sleep(5)
