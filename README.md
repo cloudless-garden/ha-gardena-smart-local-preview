@@ -84,9 +84,9 @@ If installed via HACS, you can also remove the integration files there: open HAC
 | Device                                     | Article no.                                | Entities                                                    |
 | ------------------------------------------ | ------------------------------------------ | ----------------------------------------------------------- |
 | GARDENA smart Water Control                | 19031-20                                   | Valve, temperature, battery, RF link quality                |
-| GARDENA smart Water Control                | 19033-20                                   | Valve, battery                                              |
-| GARDENA smart Dual Water Control           | 19034-20                                   | Valve, battery                                              |
-| GARDENA smart Pipeline Water Control       | 19050-20                                   | Valve, battery                                              |
+| GARDENA smart Water Control                | 19033-20                                   | Valve, temperature, battery                                 |
+| GARDENA smart Dual Water Control           | 19034-20                                   | Valve, temperature, battery                                 |
+| GARDENA smart Pipeline Water Control       | 19050-20                                   | Valve, temperature, battery                                 |
 | GARDENA smart Irrigation Control           | 19032-20                                   | Valve, RF link quality                                      |
 | GARDENA smart Irrigation Control           | 19035-20                                   | Valve                                                       |
 | GARDENA smart Automatic Home & Garden Pump | 19080-20                                   | Switch, outlet pressure, outlet temperature, flow rate, total flow, flow since reset, pump state, operating mode, turn-on pressure, dripping alert timeout, reset flow / valve errors / temperature min-max |
@@ -103,6 +103,9 @@ If installed via HACS, you can also remove the integration files there: open HAC
 | GARDENA smart SILENO max                   | 19901-22                                   | Lawn mower                                                  |
 | GARDENA smart SILENO free                  | 19921-22, 19922-22, 19923-22               | Lawn mower                                                  |
 | Flymo UltraLife                            | 970620501, 970620701, 970715101, 970715201 | Lawn mower                                                  |
+
+> [!NOTE]
+> The temperature sensor integrated into Water Control devices is intended solely for frost detection, not for precise real-time temperature tracking.
 
 See [gardena-smart-local-api] for more details about the device types.
 
