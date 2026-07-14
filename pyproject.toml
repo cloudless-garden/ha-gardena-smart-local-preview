@@ -15,6 +15,7 @@ dev = [
     "reuse>=6.2.0",
     "pytest-homeassistant-custom-component>=0.13",
     "gardena-smart-local-api==0.1.0",
+    "ty>=0.0.59",
 ]
 
 [tool.pytest.ini_options]
