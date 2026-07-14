@@ -159,7 +159,7 @@ async def test_setup_pump_gets_nine_sensors_in_one_call(
     }
 
 
-async def test_setup_adds_only_firmware_sensor_for_device_matching_no_other_gates(
+async def test_setup_adds_firmware_and_rf_link_sensors_for_device_matching_no_other_gates(
     coordinator, entry, setup_platform, spec_device, sync_devices
 ) -> None:
     async_add_entities = await setup_platform(sensor, entry)
@@ -169,8 +169,9 @@ async def test_setup_adds_only_firmware_sensor_for_device_matching_no_other_gate
 
     async_add_entities.assert_called_once()
     (entities,), _ = async_add_entities.call_args
-    assert len(entities) == 1
-    assert isinstance(entities[0], sensor.GardenaFirmwareUpdateStateSensor)
+    assert len(entities) == 2
+    assert isinstance(entities[0], sensor.GardenaRfLinkQualitySensor)
+    assert isinstance(entities[1], sensor.GardenaFirmwareUpdateStateSensor)
 
 
 async def test_setup_noop_when_coordinator_data_empty(
