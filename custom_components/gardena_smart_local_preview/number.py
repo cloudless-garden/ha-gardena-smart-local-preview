@@ -31,25 +31,35 @@ async def async_setup_entry(
 ) -> None:
     coordinator: GardenaSmartLocalCoordinator = entry.runtime_data
     known_devices: set[str] = set()
+    known_button_time_valves: set[tuple[str, int]] = set()
 
     def _add_new_devices() -> None:
         if not coordinator.data:
             return
         known_devices.intersection_update(coordinator.data)
+        known_button_time_valves.intersection_update(
+            (device.id, valve_id)
+            for device in coordinator.data.values()
+            if hasattr(device, "build_set_button_config_time_obj")
+            for valve_id in device.valve_ids
+        )
         entities_by_subentry_id: dict[str | None, list] = {}
         for device in coordinator.data.values():
-            if (
-                hasattr(device, "build_set_button_config_time_obj")
-                and device.id not in known_devices
-            ):
-                known_devices.add(device.id)
+            if hasattr(device, "build_set_button_config_time_obj"):
                 sid = find_device_subentry_id(entry, device.id)
-                entities_by_subentry_id.setdefault(sid, []).append(
-                    GardenaButtonConfigTime(coordinator, device)
-                )
-                _LOGGER.info(
-                    "Adding new button config time entity for device %s", device.id
-                )
+                for valve_id in device.valve_ids:
+                    key = (device.id, valve_id)
+                    if key in known_button_time_valves:
+                        continue
+                    known_button_time_valves.add(key)
+                    entities_by_subentry_id.setdefault(sid, []).append(
+                        GardenaButtonConfigTime(coordinator, device, valve_id)
+                    )
+                    _LOGGER.info(
+                        "Adding new button config time entity for device %s, valve %s",
+                        device.id,
+                        valve_id,
+                    )
             elif isinstance(device, Pump) and device.id not in known_devices:
                 known_devices.add(device.id)
                 sid = find_device_subentry_id(entry, device.id)
@@ -78,10 +88,16 @@ class GardenaButtonConfigTime(GardenaEntity, NumberEntity):
         self,
         coordinator: GardenaSmartLocalCoordinator,
         device: Device,
+        valve_id: int = 0,
     ) -> None:
         super().__init__(coordinator, device)
-        self._attr_unique_id = f"{device.id}_button_config_time"
-        self._attr_name = "Button Time"
+        self._valve_id = valve_id
+        multi_valve = len(device.valve_ids) > 1
+        suffix = f"_{valve_id}" if multi_valve else ""
+        self._attr_unique_id = f"{device.id}_button_config_time{suffix}"
+        self._attr_name = (
+            f"Button Time {valve_id + 1}" if multi_valve else "Button Time"
+        )
         self._attr_icon = "mdi:timer-outline"
 
     @property
@@ -89,16 +105,23 @@ class GardenaButtonConfigTime(GardenaEntity, NumberEntity):
         device = self.coordinator.data.get(self._device.id)
         if not device:
             return None
-        seconds = device.button_config_time
+        if hasattr(device, "get_button_config_time"):
+            seconds = device.get_button_config_time(self._valve_id)
+        else:
+            seconds = device.button_config_time
         if seconds is None:
             return None
         return int(round(seconds / 60))
 
     async def async_set_native_value(self, value: float) -> None:
-        await self.coordinator.send_request(
-            self._device.id,
-            self._device.build_set_button_config_time_obj(int(value) * 60),
-        )
+        seconds = int(value) * 60
+        if hasattr(self._device, "get_button_config_time"):
+            request = self._device.build_set_button_config_time_obj(
+                seconds, self._valve_id
+            )
+        else:
+            request = self._device.build_set_button_config_time_obj(seconds)
+        await self.coordinator.send_request(self._device.id, request)
         _LOGGER.info(
             "Set button config time for device %s to %s minutes",
             self._device.id,
