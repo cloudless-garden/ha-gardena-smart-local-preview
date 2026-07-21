@@ -173,6 +173,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    if not await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
+        return False
     coordinator: GardenaSmartLocalCoordinator = entry.runtime_data
     await coordinator.async_disconnect()
-    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    return True
