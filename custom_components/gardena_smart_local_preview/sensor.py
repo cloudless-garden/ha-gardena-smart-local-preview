@@ -139,7 +139,8 @@ async def async_setup_entry(
         for sid, entities in entities_by_subentry_id.items():
             async_add_entities(entities, config_subentry_id=sid)
 
-    coordinator.async_add_listener(_add_new_devices)
+    entry.async_on_unload(coordinator.async_add_listener(_add_new_devices))
+    _add_new_devices()
 
 
 class GardenaTemperatureSensor(GardenaEntity, SensorEntity):

@@ -153,6 +153,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Register before platform listeners so subentries exist when
     # platforms look them up for newly discovered devices.
     entry.async_on_unload(coordinator.async_add_listener(_ensure_device_subentries))
+    _ensure_device_subentries()
 
     known_subentries: dict[str, str] = {
         sid: se.data["device_id"]
