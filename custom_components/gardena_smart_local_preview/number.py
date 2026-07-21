@@ -53,13 +53,10 @@ async def async_setup_entry(
             elif isinstance(device, Pump) and device.id not in known_devices:
                 known_devices.add(device.id)
                 sid = find_device_subentry_id(entry, device.id)
-                entities_by_subentry_id.setdefault(sid, []).extend(
-                    [
-                        GardenaPumpTurnOnPressure(coordinator, device),
-                        GardenaPumpDrippingAlert(coordinator, device),
-                    ]
+                entities_by_subentry_id.setdefault(sid, []).append(
+                    GardenaPumpTurnOnPressure(coordinator, device)
                 )
-                _LOGGER.info("Adding new pump number entities for device %s", device.id)
+                _LOGGER.info("Adding new pump number entity for device %s", device.id)
         for sid, entities in entities_by_subentry_id.items():
             async_add_entities(entities, config_subentry_id=sid)
 
@@ -140,40 +137,4 @@ class GardenaPumpTurnOnPressure(GardenaEntity, NumberEntity):
             "Set turn-on pressure for device %s to %s bar",
             self._device.id,
             value,
-        )
-
-
-class GardenaPumpDrippingAlert(GardenaEntity, NumberEntity):
-    _attr_native_min_value = 0
-    _attr_native_max_value = 3600
-    _attr_native_step = 1
-    _attr_native_unit_of_measurement = UnitOfTime.SECONDS
-    _attr_mode = NumberMode.BOX
-    _attr_entity_category = EntityCategory.CONFIG
-
-    def __init__(
-        self,
-        coordinator: GardenaSmartLocalCoordinator,
-        device: Pump,
-    ) -> None:
-        super().__init__(coordinator, device)
-        self._attr_unique_id = f"{device.id}_dripping_alert"
-        self._attr_name = "Dripping Alert Timeout"
-
-    @property
-    def native_value(self) -> float | None:
-        device = self.coordinator.data.get(self._device.id)
-        if not device:
-            return None
-        return device.dripping_alert
-
-    async def async_set_native_value(self, value: float) -> None:
-        await self.coordinator.send_request(
-            self._device.id,
-            self._device.build_set_dripping_alert_obj(int(value)),
-        )
-        _LOGGER.info(
-            "Set dripping alert timeout for device %s to %s seconds",
-            self._device.id,
-            int(value),
         )
