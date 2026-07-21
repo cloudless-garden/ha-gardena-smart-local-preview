@@ -13,6 +13,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import aiohttp
 import pytest
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 
 from custom_components.gardena_smart_local_preview import (
     coordinator as coordinator_module,
@@ -958,17 +959,17 @@ def test_update_devices_handles_exception(
 # ---------------------------------------------------------------------------
 
 
-async def test_send_request_without_ws_returns_empty(
+async def test_send_request_without_ws_raises(
     coordinator: GardenaSmartLocalCoordinator,
 ) -> None:
     from gardena_smart_local_api.devices import build_discovery_obj
 
     coordinator._ws = None
-    result = await coordinator.send_request("device-1", build_discovery_obj())
-    assert list(result) == []
+    with pytest.raises(HomeAssistantError):
+        await coordinator.send_request("device-1", build_discovery_obj())
 
 
-async def test_send_request_with_closed_ws_returns_empty(
+async def test_send_request_with_closed_ws_raises(
     coordinator: GardenaSmartLocalCoordinator, fake_ws
 ) -> None:
     from gardena_smart_local_api.devices import build_discovery_obj
@@ -976,8 +977,8 @@ async def test_send_request_with_closed_ws_returns_empty(
     ws = fake_ws()
     ws.closed = True
     coordinator._ws = ws
-    result = await coordinator.send_request("device-1", build_discovery_obj())
-    assert list(result) == []
+    with pytest.raises(HomeAssistantError):
+        await coordinator.send_request("device-1", build_discovery_obj())
     assert ws.sent == []
 
 
