@@ -212,6 +212,55 @@ async def test_zeroconf_already_configured(hass: HomeAssistant) -> None:
     assert result["reason"] == "already_configured"
 
 
+async def test_zeroconf_already_configured_by_host_manual_entry(
+    hass: HomeAssistant,
+) -> None:
+    """Zeroconf discovery aborts when a manually-added entry has the same host.
+
+    The manual entry's unique_id is the host itself, while zeroconf uses the
+    mDNS name, so they wouldn't collide on unique_id alone.
+    """
+    MockConfigEntry(
+        domain=DOMAIN,
+        unique_id=MOCK_HOST,
+        data={CONF_HOST: MOCK_HOST, CONF_PORT: MOCK_PORT, CONF_PASSWORD: MOCK_PASSWORD},
+    ).add_to_hass(hass)
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={"source": SOURCE_ZEROCONF},
+        data=_make_zeroconf_info(),
+    )
+    assert result["type"] == "abort"
+    assert result["reason"] == "already_configured"
+
+
+async def test_user_flow_already_configured_by_host_zeroconf_entry(
+    hass: HomeAssistant,
+) -> None:
+    """Manual setup aborts when a zeroconf-discovered entry has the same host.
+
+    The zeroconf entry's unique_id is the mDNS name, while manual setup uses
+    the host itself, so they wouldn't collide on unique_id alone.
+    """
+    MockConfigEntry(
+        domain=DOMAIN,
+        unique_id="gardena-gw-1234",
+        data={CONF_HOST: MOCK_HOST, CONF_PORT: MOCK_PORT, CONF_PASSWORD: MOCK_PASSWORD},
+    ).add_to_hass(hass)
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_USER}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {CONF_HOST: MOCK_HOST, CONF_PORT: MOCK_PORT, CONF_PASSWORD: MOCK_PASSWORD},
+    )
+
+    assert result["type"] == "abort"
+    assert result["reason"] == "already_configured"
+
+
 async def test_zeroconf_confirm_cannot_connect(hass: HomeAssistant) -> None:
     """Failed connection at zeroconf confirmation shows an error."""
     result = await hass.config_entries.flow.async_init(
