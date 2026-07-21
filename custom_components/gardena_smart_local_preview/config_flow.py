@@ -7,6 +7,7 @@ import logging
 
 import aiohttp
 import voluptuous as vol
+from yarl import URL
 
 from homeassistant.config_entries import (
     ConfigEntry,
@@ -170,7 +171,7 @@ async def _async_try_connect(host: str, port: int, password: str) -> str | None:
     try:
         async with aiohttp.ClientSession() as session:
             async with session.ws_connect(
-                f"wss://{host}:{port}",
+                URL.build(scheme="wss", host=host, port=port),
                 ssl=ssl_context,
                 headers={"Authorization": f"Basic {auth_b64}"},
                 timeout=aiohttp.ClientTimeout(total=10),
