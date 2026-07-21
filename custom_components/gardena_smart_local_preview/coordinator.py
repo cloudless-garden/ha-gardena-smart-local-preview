@@ -11,6 +11,7 @@ import aiohttp
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util.ssl import get_default_no_verify_context
+from yarl import URL
 
 from gardena_smart_local_api.devices import (
     Device,
@@ -62,7 +63,7 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
         self.host = host
         self.port = port
         self.password = password
-        self.uri = f"wss://{host}:{port}"
+        self.uri = URL.build(scheme="wss", host=host, port=port)
 
         auth_string = f"_:{password}"
         auth_bytes = auth_string.encode("utf-8")
