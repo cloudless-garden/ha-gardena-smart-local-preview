@@ -113,6 +113,17 @@ def test_gardena_entity_unavailable_when_missing_from_coordinator_data(
     assert entity.available is False
 
 
+def test_gardena_entity_unavailable_when_gateway_disconnected(mock_device) -> None:
+    device = mock_device(device_id="device-1", is_online=True)
+    coordinator = MagicMock()
+    coordinator.data = {"device-1": device}
+    coordinator.connected = False
+
+    entity = GardenaEntity(coordinator, device)
+
+    assert entity.available is False
+
+
 # ---------------------------------------------------------------------------
 # _handle_coordinator_update: device registry sw_version sync
 # ---------------------------------------------------------------------------

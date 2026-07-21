@@ -93,10 +93,47 @@ async def test_async_connect_sets_up_task_and_ssl_context(
         assert coordinator._ssl_context is not None
         coordinator._do_discovery.assert_awaited_once()
         assert coordinator._ws is ws
+        assert coordinator.connected is True
 
     await coordinator.async_disconnect()
     assert coordinator._ws is None
     assert coordinator._pending_replies == {}
+    assert coordinator.connected is False
+
+
+async def test_connected_false_when_ws_closed(
+    coordinator: GardenaSmartLocalCoordinator, fake_ws
+) -> None:
+    ws = fake_ws()
+    ws.closed = True
+    coordinator._ws = ws
+    assert coordinator.connected is False
+
+
+async def test_connected_false_when_never_connected(
+    coordinator: GardenaSmartLocalCoordinator,
+) -> None:
+    assert coordinator.connected is False
+
+
+async def test_ws_loop_notifies_listeners_on_disconnect(
+    hass: HomeAssistant, coordinator: GardenaSmartLocalCoordinator, fake_ws
+) -> None:
+    coordinator._do_discovery = AsyncMock()
+    ws = fake_ws()
+    session = _session_with([ws, asyncio.CancelledError()])
+    listener = MagicMock()
+    coordinator.async_add_listener(listener)
+
+    with patch(PATCH_CLIENTSESSION, return_value=session):
+        await coordinator.async_connect()
+        await _pump()
+        listener.reset_mock()
+
+        ws.simulate_close()
+        await _pump()
+
+    listener.assert_called()
 
 
 async def test_ws_loop_reconnects_after_reader_exit(
