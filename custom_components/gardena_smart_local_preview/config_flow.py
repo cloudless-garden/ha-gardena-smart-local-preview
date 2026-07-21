@@ -9,6 +9,7 @@ from typing import Any
 
 import aiohttp
 import voluptuous as vol
+from yarl import URL
 
 from homeassistant.config_entries import (
     ConfigEntry,
@@ -209,7 +210,7 @@ async def _async_try_connect(
     try:
         session = async_get_clientsession(hass)
         async with session.ws_connect(
-            f"wss://{host}:{port}",
+            URL.build(scheme="wss", host=host, port=port),
             ssl=ssl_context,
             headers={"Authorization": f"Basic {auth_b64}"},
             # ty doesn't resolve aiohttp's legacy attr.ib()-based __init__.
