@@ -11,6 +11,7 @@ import aiohttp
 from yarl import URL
 
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util.ssl import get_default_no_verify_context
 
@@ -518,10 +519,9 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
         wait_for_response_sec: float = 0,
     ) -> IngressMessageList:
         if not self._ws or self._ws.closed:
-            _LOGGER.error(
-                "Cannot send request to device %s: WebSocket not connected", device_id
+            raise HomeAssistantError(
+                f"Cannot send request to device {device_id}: WebSocket not connected"
             )
-            return IngressMessageList([])
 
         if wait_for_response_sec > 0:
             loop = asyncio.get_running_loop()
