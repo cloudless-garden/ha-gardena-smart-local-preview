@@ -16,6 +16,7 @@ from homeassistant.config_entries import (
     SOURCE_IMPORT,
 )
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.const import (
@@ -84,7 +85,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         port=entry.data[CONF_PORT],
         password=entry.data[CONF_PASSWORD],
     )
-    await coordinator.async_connect()
+    try:
+        await coordinator.async_connect()
+    except Exception as err:
+        await coordinator.async_disconnect()
+        raise ConfigEntryNotReady(
+            f"Could not connect to GARDENA smart Gateway at {coordinator.uri}"
+        ) from err
     entry.runtime_data = coordinator
 
     async def _stop(_event: object) -> None:
