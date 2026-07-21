@@ -46,6 +46,9 @@ class GardenaSmartLocalConfigFlow(ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
 
         if user_input is not None:
+            # A zeroconf-discovered entry for the same host would have a
+            # different (mDNS name based) unique_id, so also match on host.
+            self._async_abort_entries_match({CONF_HOST: user_input[CONF_HOST]})
             await self.async_set_unique_id(user_input[CONF_HOST])
             self._abort_if_unique_id_configured()
 
@@ -81,6 +84,9 @@ class GardenaSmartLocalConfigFlow(ConfigFlow, domain=DOMAIN):
         host = discovery_info.host
         port = discovery_info.port or DEFAULT_PORT
 
+        # A manually-added entry for the same host would have a different
+        # (host based) unique_id, so also match on host.
+        self._async_abort_entries_match({CONF_HOST: host})
         await self.async_set_unique_id(name)
         self._abort_if_unique_id_configured()
 
