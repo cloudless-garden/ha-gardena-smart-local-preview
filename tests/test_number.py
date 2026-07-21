@@ -28,7 +28,7 @@ async def test_setup_adds_button_config_time_for_water_control(
     assert kwargs["config_subentry_id"] is None
 
 
-async def test_setup_adds_two_number_entities_for_pump(
+async def test_setup_adds_one_number_entity_for_pump(
     coordinator, entry, setup_platform, spec_device, sync_devices
 ) -> None:
     async_add_entities = await setup_platform(number, entry)
@@ -38,9 +38,8 @@ async def test_setup_adds_two_number_entities_for_pump(
 
     async_add_entities.assert_called_once()
     (entities,), _ = async_add_entities.call_args
-    assert len(entities) == 2
+    assert len(entities) == 1
     assert isinstance(entities[0], number.GardenaPumpTurnOnPressure)
-    assert isinstance(entities[1], number.GardenaPumpDrippingAlert)
 
 
 async def test_setup_skips_non_matching_device(
@@ -158,39 +157,4 @@ async def test_turn_on_pressure_set_native_value(coordinator, spec_device) -> No
     device.build_set_turn_on_pressure_obj.assert_called_once_with(3.2)
     coordinator.send_request.assert_awaited_once_with(
         "device-1", device.build_set_turn_on_pressure_obj.return_value
-    )
-
-
-# ---------------------------------------------------------------------------
-# GardenaPumpDrippingAlert
-# ---------------------------------------------------------------------------
-
-
-def test_dripping_alert_native_value(coordinator, spec_device, sync_devices) -> None:
-    device = spec_device(Pump, device_id="device-1", dripping_alert=120)
-    coordinator._devices["device-1"] = device
-    sync_devices()
-    entity = number.GardenaPumpDrippingAlert(coordinator, device)
-    assert entity.native_value == 120
-
-
-def test_dripping_alert_native_value_none_when_device_missing(
-    coordinator, spec_device, sync_devices
-) -> None:
-    device = spec_device(Pump, device_id="device-1", dripping_alert=120)
-    sync_devices()
-    entity = number.GardenaPumpDrippingAlert(coordinator, device)
-    assert entity.native_value is None
-
-
-async def test_dripping_alert_set_native_value(coordinator, spec_device) -> None:
-    device = spec_device(Pump, device_id="device-1")
-    coordinator.send_request = AsyncMock()
-    entity = number.GardenaPumpDrippingAlert(coordinator, device)
-
-    await entity.async_set_native_value(120.0)
-
-    device.build_set_dripping_alert_obj.assert_called_once_with(120)
-    coordinator.send_request.assert_awaited_once_with(
-        "device-1", device.build_set_dripping_alert_obj.return_value
     )

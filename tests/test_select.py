@@ -10,12 +10,15 @@ from unittest.mock import AsyncMock
 
 import pytest
 from gardena_smart_local_api.devices import PowerAdapter, Pump
-from gardena_smart_local_api.devices.irrigation import PumpOperatingMode
+from gardena_smart_local_api.devices.irrigation import (
+    PumpDrippingAlert,
+    PumpOperatingMode,
+)
 
 from custom_components.gardena_smart_local_preview import select
 
 
-async def test_setup_adds_select_for_pump(
+async def test_setup_adds_two_selects_for_pump(
     coordinator, entry, setup_platform, spec_device, sync_devices
 ) -> None:
     async_add_entities = await setup_platform(select, entry)
@@ -25,8 +28,9 @@ async def test_setup_adds_select_for_pump(
 
     async_add_entities.assert_called_once()
     (entities,), kwargs = async_add_entities.call_args
-    assert len(entities) == 1
+    assert len(entities) == 2
     assert isinstance(entities[0], select.GardenaPumpOperatingModeSelect)
+    assert isinstance(entities[1], select.GardenaPumpDrippingAlert)
     assert kwargs["config_subentry_id"] is None
 
 
@@ -150,6 +154,88 @@ async def test_select_option_invalid_raises_key_error(coordinator, spec_device) 
     device = spec_device(Pump, device_id="device-1")
     coordinator.send_request = AsyncMock()
     entity = select.GardenaPumpOperatingModeSelect(coordinator, device)
+
+    with pytest.raises(KeyError):
+        await entity.async_select_option("bogus")
+
+
+# ---------------------------------------------------------------------------
+# GardenaPumpDrippingAlert
+# ---------------------------------------------------------------------------
+
+
+def test_dripping_alert_options(coordinator, spec_device) -> None:
+    device = spec_device(Pump, device_id="device-1")
+    entity = select.GardenaPumpDrippingAlert(coordinator, device)
+    assert entity.options == ["60_minutes", "2_minutes", "off"]
+
+
+def test_dripping_alert_current_option(coordinator, spec_device, sync_devices) -> None:
+    device = spec_device(
+        Pump, device_id="device-1", dripping_alert=PumpDrippingAlert.MINUTES_2
+    )
+    coordinator._devices["device-1"] = device
+    sync_devices()
+    entity = select.GardenaPumpDrippingAlert(coordinator, device)
+    assert entity.current_option == "2_minutes"
+
+
+def test_dripping_alert_current_option_off(
+    coordinator, spec_device, sync_devices
+) -> None:
+    device = spec_device(
+        Pump,
+        device_id="device-1",
+        dripping_alert=PumpDrippingAlert.DRIPPING_ALERT_OFF,
+    )
+    coordinator._devices["device-1"] = device
+    sync_devices()
+    entity = select.GardenaPumpDrippingAlert(coordinator, device)
+    assert entity.current_option == "off"
+
+
+def test_dripping_alert_current_option_none_when_missing(
+    coordinator, spec_device, sync_devices
+) -> None:
+    device = spec_device(
+        Pump, device_id="device-1", dripping_alert=PumpDrippingAlert.MINUTES_60
+    )
+    sync_devices()
+    entity = select.GardenaPumpDrippingAlert(coordinator, device)
+    assert entity.current_option is None
+
+
+def test_dripping_alert_current_option_none_when_alert_none(
+    coordinator, spec_device, sync_devices
+) -> None:
+    device = spec_device(Pump, device_id="device-1", dripping_alert=None)
+    coordinator._devices["device-1"] = device
+    sync_devices()
+    entity = select.GardenaPumpDrippingAlert(coordinator, device)
+    assert entity.current_option is None
+
+
+async def test_dripping_alert_select_option(coordinator, spec_device) -> None:
+    device = spec_device(Pump, device_id="device-1")
+    coordinator.send_request = AsyncMock()
+    entity = select.GardenaPumpDrippingAlert(coordinator, device)
+
+    await entity.async_select_option("60_minutes")
+
+    device.build_set_dripping_alert_obj.assert_called_once_with(
+        PumpDrippingAlert.MINUTES_60.value
+    )
+    coordinator.send_request.assert_awaited_once_with(
+        "device-1", device.build_set_dripping_alert_obj.return_value
+    )
+
+
+async def test_dripping_alert_select_option_invalid_raises_key_error(
+    coordinator, spec_device
+) -> None:
+    device = spec_device(Pump, device_id="device-1")
+    coordinator.send_request = AsyncMock()
+    entity = select.GardenaPumpDrippingAlert(coordinator, device)
 
     with pytest.raises(KeyError):
         await entity.async_select_option("bogus")
