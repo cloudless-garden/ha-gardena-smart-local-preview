@@ -128,8 +128,14 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
 
                         await self._do_discovery()
 
-                        # Block until the reader exits (disconnect / error)
-                        await reader_task
+                        # Block until either worker exits (disconnect / error), then
+                        # re-raise its exception, if any, so we reconnect below.
+                        done, _pending = await asyncio.wait(
+                            (reader_task, consumer_task),
+                            return_when=asyncio.FIRST_COMPLETED,
+                        )
+                        for task in done:
+                            task.result()
                         _LOGGER.info(
                             "Disconnected from GARDENA smart Gateway, reconnecting"
                         )
