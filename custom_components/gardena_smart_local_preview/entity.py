@@ -48,6 +48,8 @@ class GardenaEntity(CoordinatorEntity[GardenaSmartLocalCoordinator]):
 
     @property
     def available(self) -> bool:
+        if not self.coordinator.connected:
+            return False
         device = self.coordinator.data.get(self._device.id)
         return bool(device and device.is_online)
 

@@ -94,6 +94,11 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
         async with asyncio.timeout(15):
             await self._first_connect_result
 
+    @property
+    def connected(self) -> bool:
+        """Return True if the WebSocket to the gateway is currently connected."""
+        return self._ws is not None and not self._ws.closed
+
     async def async_disconnect(self) -> None:
         for handle in self._includable_timeouts.values():
             handle.cancel()
@@ -175,6 +180,8 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
                     if not fut.done():
                         fut.cancel()
                 self._pending_replies.clear()
+                # Let entities re-check availability now that we're disconnected.
+                self.async_update_listeners()
 
     async def _ws_reader(self, ws: aiohttp.ClientWebSocketResponse) -> None:
         async for msg in ws:
