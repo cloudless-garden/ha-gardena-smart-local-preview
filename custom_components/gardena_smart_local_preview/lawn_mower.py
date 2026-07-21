@@ -76,8 +76,11 @@ class GardenaMower(GardenaEntity, LawnMowerEntity):
             self._attr_supported_features |= LawnMowerEntityFeature.PAUSE
 
     @property
-    def activity(self) -> LawnMowerActivity:
-        mower_state = self._device.state
+    def activity(self) -> LawnMowerActivity | None:
+        device = self.coordinator.data.get(self._device.id)
+        if device is None:
+            return None
+        mower_state = device.state
         _LOGGER.debug("Mower status: %s", mower_state)
         match mower_state:
             case MowerState.CHARGING | MowerState.PARKED:
@@ -92,7 +95,11 @@ class GardenaMower(GardenaEntity, LawnMowerEntity):
             case MowerState.RETURNING:
                 return LawnMowerActivity.RETURNING
 
-        return LawnMowerActivity.ERROR
+            case MowerState.ERROR:
+                return LawnMowerActivity.ERROR
+
+        # MowerState.UNKNOWN or any state the dependency doesn't map yet.
+        return None
 
     async def async_start_mowing(self) -> None:
         await self.coordinator.send_request(
