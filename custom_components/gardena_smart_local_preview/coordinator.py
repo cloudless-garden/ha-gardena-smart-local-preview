@@ -79,16 +79,21 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
         self._pending_replies: dict[str, asyncio.Future[Reply]] = {}
         self._includable_devices: dict[str, IncludableDeviceInfo] = {}
         self._includable_timeouts: dict[str, asyncio.TimerHandle] = {}
+        self._first_connect_result: asyncio.Future[None] | None = None
 
     async def _async_update_data(self) -> DeviceMap:
         return self._devices
 
     async def async_connect(self) -> None:
+        """Connect to the gateway, waiting for the first attempt to succeed."""
         if self._ssl_context is None:
             self._ssl_context = get_default_no_verify_context()
+        self._first_connect_result = self.hass.loop.create_future()
         self._task = self.hass.async_create_background_task(
             self._ws_loop(), "gardena_smart_local_preview_websocket"
         )
+        async with asyncio.timeout(15):
+            await self._first_connect_result
 
     async def async_disconnect(self) -> None:
         for handle in self._includable_timeouts.values():
@@ -129,6 +134,11 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
                     )
 
                     await self._do_discovery()
+                    if (
+                        self._first_connect_result
+                        and not self._first_connect_result.done()
+                    ):
+                        self._first_connect_result.set_result(None)
 
                     # Block until either worker exits (disconnect / error), then
                     # re-raise its exception, if any, so we reconnect below.
@@ -144,8 +154,12 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
 
             except asyncio.CancelledError:
                 _LOGGER.debug("WebSocket loop cancelled")
+                if self._first_connect_result and not self._first_connect_result.done():
+                    self._first_connect_result.cancel()
                 break
             except aiohttp.WSServerHandshakeError as err:
+                if self._first_connect_result and not self._first_connect_result.done():
+                    self._first_connect_result.set_exception(err)
                 if err.status == 401:
                     _LOGGER.error(
                         "Authentication failed connecting to GARDENA smart Gateway "
@@ -158,6 +172,8 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
                 _LOGGER.error("WebSocket error: %s", err)
                 await asyncio.sleep(5)
             except Exception as err:
+                if self._first_connect_result and not self._first_connect_result.done():
+                    self._first_connect_result.set_exception(err)
                 _LOGGER.error("WebSocket error: %s", err)
                 await asyncio.sleep(5)
             finally:

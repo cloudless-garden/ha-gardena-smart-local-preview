@@ -6,7 +6,9 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import aiohttp
 
 from homeassistant.config_entries import (
     SIGNAL_CONFIG_ENTRY_CHANGED,
@@ -82,6 +84,68 @@ async def test_setup_entry_connects_and_forwards_platforms(hass) -> None:
     assert entry.state is ConfigEntryState.LOADED
     assert isinstance(entry.runtime_data, GardenaSmartLocalCoordinator)
     mock_connect.assert_called_once()
+
+
+async def test_setup_entry_retries_on_connect_failure(hass) -> None:
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={CONF_HOST: "192.168.1.50", CONF_PORT: 8443, CONF_PASSWORD: "secret"},
+    )
+    entry.add_to_hass(hass)
+
+    with (
+        patch(PATCH_CONNECT, AsyncMock(side_effect=RuntimeError("boom"))),
+        patch(PATCH_DISCONNECT, AsyncMock()) as mock_disconnect,
+    ):
+        assert not await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+    assert entry.state is ConfigEntryState.SETUP_RETRY
+    mock_disconnect.assert_called_once()
+
+
+async def test_setup_entry_fails_auth_on_401(hass) -> None:
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={CONF_HOST: "192.168.1.50", CONF_PORT: 8443, CONF_PASSWORD: "secret"},
+    )
+    entry.add_to_hass(hass)
+    error = aiohttp.WSServerHandshakeError(
+        request_info=MagicMock(), history=(), status=401, message="Unauthorized"
+    )
+
+    with (
+        patch(PATCH_CONNECT, AsyncMock(side_effect=error)),
+        patch(PATCH_DISCONNECT, AsyncMock()) as mock_disconnect,
+    ):
+        assert not await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+    assert entry.state is ConfigEntryState.SETUP_ERROR
+    mock_disconnect.assert_called_once()
+    flows = hass.config_entries.flow.async_progress_by_handler(DOMAIN)
+    assert any(flow["context"]["source"] == "reauth" for flow in flows)
+
+
+async def test_setup_entry_non_401_handshake_error_retries(hass) -> None:
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={CONF_HOST: "192.168.1.50", CONF_PORT: 8443, CONF_PASSWORD: "secret"},
+    )
+    entry.add_to_hass(hass)
+    error = aiohttp.WSServerHandshakeError(
+        request_info=MagicMock(), history=(), status=500, message="Server error"
+    )
+
+    with (
+        patch(PATCH_CONNECT, AsyncMock(side_effect=error)),
+        patch(PATCH_DISCONNECT, AsyncMock()) as mock_disconnect,
+    ):
+        assert not await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+    assert entry.state is ConfigEntryState.SETUP_RETRY
+    mock_disconnect.assert_called_once()
 
 
 async def test_setup_entry_creates_subentry_for_discovered_device(

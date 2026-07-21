@@ -144,7 +144,8 @@ async def test_ws_loop_reconnects_after_exception(
         patch.object(coordinator_module.asyncio, "sleep", fake_sleep),
         caplog.at_level(logging.ERROR),
     ):
-        await coordinator.async_connect()
+        with pytest.raises(aiohttp.ClientConnectionError):
+            await coordinator.async_connect()
         await real_sleep(0.05)
 
     assert sleep_calls == [5]
@@ -170,7 +171,8 @@ async def test_ws_loop_401_starts_reauth_and_stops_retrying(
         patch(PATCH_CLIENTSESSION, return_value=session),
         caplog.at_level(logging.ERROR),
     ):
-        await coordinator.async_connect()
+        with pytest.raises(aiohttp.WSServerHandshakeError):
+            await coordinator.async_connect()
         await _pump()
 
     assert session.ws_connect.call_count == 1
@@ -207,7 +209,8 @@ async def test_ws_loop_non_401_handshake_error_reconnects(
         patch.object(coordinator_module.asyncio, "sleep", fake_sleep),
         caplog.at_level(logging.ERROR),
     ):
-        await coordinator.async_connect()
+        with pytest.raises(aiohttp.WSServerHandshakeError):
+            await coordinator.async_connect()
         await real_sleep(0.05)
 
     assert sleep_calls == [5]
@@ -226,7 +229,8 @@ async def test_ws_loop_cancelled_on_connect_breaks_cleanly(
         patch(PATCH_CLIENTSESSION, return_value=session),
         caplog.at_level(logging.ERROR),
     ):
-        await coordinator.async_connect()
+        with pytest.raises(asyncio.CancelledError):
+            await coordinator.async_connect()
         await _pump()
 
     assert coordinator._task.done()
