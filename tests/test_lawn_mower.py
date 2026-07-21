@@ -91,13 +91,45 @@ def test_gen2_mower_has_pause_feature(coordinator, spec_device) -> None:
         (MowerState.MOWING, LawnMowerActivity.MOWING),
         (MowerState.PAUSED, LawnMowerActivity.PAUSED),
         (MowerState.RETURNING, LawnMowerActivity.RETURNING),
-        (MowerState.UNKNOWN, LawnMowerActivity.ERROR),
+        (MowerState.ERROR, LawnMowerActivity.ERROR),
+        (MowerState.UNKNOWN, None),
     ],
 )
-def test_activity_maps_mower_state(coordinator, spec_device, state, expected) -> None:
+def test_activity_maps_mower_state(
+    coordinator, spec_device, sync_devices, state, expected
+) -> None:
     device = spec_device(Gen1Mower1, device_id="device-1", state=state)
+    coordinator._devices["device-1"] = device
+    sync_devices()
     entity = lawn_mower.GardenaMower(coordinator, device)
     assert entity.activity == expected
+
+
+def test_activity_none_when_device_missing_from_coordinator(
+    coordinator, spec_device, sync_devices
+) -> None:
+    device = spec_device(Gen1Mower1, device_id="device-1", state=MowerState.MOWING)
+    sync_devices()
+    entity = lawn_mower.GardenaMower(coordinator, device)
+    assert entity.activity is None
+
+
+def test_activity_reflects_current_coordinator_state_not_stale_device(
+    coordinator, spec_device, sync_devices
+) -> None:
+    """Rediscovery replaces Device objects; activity must not use the stale one."""
+    device = spec_device(Gen1Mower1, device_id="device-1", state=MowerState.MOWING)
+    coordinator._devices["device-1"] = device
+    sync_devices()
+    entity = lawn_mower.GardenaMower(coordinator, device)
+
+    updated_device = spec_device(
+        Gen1Mower1, device_id="device-1", state=MowerState.PARKED
+    )
+    coordinator._devices["device-1"] = updated_device
+    sync_devices()
+
+    assert entity.activity == LawnMowerActivity.DOCKED
 
 
 async def test_async_start_mowing(coordinator, spec_device) -> None:
