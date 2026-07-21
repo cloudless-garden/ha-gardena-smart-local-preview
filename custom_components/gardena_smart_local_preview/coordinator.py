@@ -514,6 +514,11 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
 
     def _update_devices(self, devices: DeviceMap) -> None:
         try:
+            for device_id in self._devices.keys() - devices.keys():
+                _LOGGER.info(
+                    "Device %s no longer present in discovery, dropping", device_id
+                )
+                del self._devices[device_id]
             for device in devices.values():
                 self._update_device(device)
         except Exception as err:

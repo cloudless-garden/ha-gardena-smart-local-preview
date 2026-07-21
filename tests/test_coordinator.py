@@ -945,6 +945,18 @@ def test_update_device_updates_existing_device(
     assert coordinator._devices["device-1"] is new
 
 
+def test_update_devices_drops_device_missing_from_discovery(
+    coordinator: GardenaSmartLocalCoordinator, mock_device
+) -> None:
+    coordinator._devices["stale"] = mock_device(device_id="stale")
+    fresh = mock_device(device_id="device-1")
+
+    coordinator._update_devices(_device_map(**{"device-1": fresh}))
+
+    assert "stale" not in coordinator._devices
+    assert coordinator._devices["device-1"] is fresh
+
+
 def test_update_devices_handles_exception(
     coordinator: GardenaSmartLocalCoordinator,
     caplog: pytest.LogCaptureFixture,
