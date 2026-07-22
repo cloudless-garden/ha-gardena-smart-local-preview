@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import logging
+from typing import cast
 
 from homeassistant.components.select import SelectEntity
 from homeassistant.config_entries import ConfigEntry
@@ -83,6 +84,6 @@ class GardenaPumpOperatingModeSelect(GardenaEntity, SelectEntity):
         mode = _OPTION_TO_MODE[option]
         await self.coordinator.send_request(
             self._device.id,
-            self._device.build_set_operating_mode_obj(mode),
+            cast(Pump, self._device).build_set_operating_mode_obj(mode),
         )
         _LOGGER.info("Set operating mode for device %s to %s", self._device.id, option)

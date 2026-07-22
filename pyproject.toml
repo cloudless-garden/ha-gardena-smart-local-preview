@@ -5,5 +5,23 @@
 # This file is kept minimal because it is used for dev dependencies only, not
 # for publishing.
 
+[project]
+name = "ha-gardena-smart-local-preview"
+version = "0.0.7"
+requires-python = ">=3.13"
+
 [dependency-groups]
-dev = ["reuse>=6.2.0"]
+dev = [
+    "reuse>=6.2.0",
+    "pytest-homeassistant-custom-component>=0.13",
+    "gardena-smart-local-api==0.1.0",
+    "ty>=0.0.59",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+relative_files = true
+source = ["custom_components/gardena_smart_local_preview"]

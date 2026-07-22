@@ -16,5 +16,11 @@ screenshot*.png
 
 # Python
 *.pyc
+__pycache__/
 .ruff_cache/
 .venv/
+
+# Test artifacts
+.coverage
+coverage.xml
+.pytest_cache/
