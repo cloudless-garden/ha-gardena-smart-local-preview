@@ -14,8 +14,14 @@ from homeassistant.const import EntityCategory, UnitOfPressure, UnitOfTime
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
+from .const import DEFAULT_VALVE_DURATION_MINUTES
 from .coordinator import GardenaSmartLocalCoordinator
-from .entity import GardenaEntity, find_device_subentry_id
+from .entity import (
+    GardenaEntity,
+    async_set_valve_duration_minutes,
+    find_device_subentry_id,
+    get_valve_duration_minutes,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -32,6 +38,7 @@ async def async_setup_entry(
     coordinator: GardenaSmartLocalCoordinator = entry.runtime_data
     known_devices: set[str] = set()
     known_button_time_valves: set[tuple[str, int]] = set()
+    known_valves: set[tuple[str, int]] = set()
 
     def _add_new_devices() -> None:
         if not coordinator.data:
@@ -43,6 +50,13 @@ async def async_setup_entry(
             if hasattr(device, "build_set_button_config_time_obj")
             for valve_id in device.valve_ids
         )
+
+        current_valves: set[tuple[str, int]] = set()
+        for device in coordinator.data.values():
+            for valve_id in getattr(device, "valve_ids", []):
+                current_valves.add((device.id, valve_id))
+        known_valves.intersection_update(current_valves)
+
         entities_by_subentry_id: dict[str | None, list] = {}
         for device in coordinator.data.values():
             if hasattr(device, "build_set_button_config_time_obj"):
@@ -70,6 +84,26 @@ async def async_setup_entry(
                     ]
                 )
                 _LOGGER.info("Adding new pump number entities for device %s", device.id)
+
+            new_valve_ids: list[int] = []
+            for valve_id in getattr(device, "valve_ids", []):
+                if (device.id, valve_id) not in known_valves:
+                    new_valve_ids.append(valve_id)
+
+            if new_valve_ids:
+                sid = find_device_subentry_id(entry, device.id)
+                for valve_id in new_valve_ids:
+                    known_valves.add((device.id, valve_id))
+                    entities_by_subentry_id.setdefault(sid, []).append(
+                        GardenaValveDuration(coordinator, entry, device, valve_id)
+                    )
+                    _LOGGER.info(
+                        "Adding new valve duration entity for device %s, valve %s, "
+                        "default duration=%s minutes",
+                        device.id,
+                        valve_id,
+                        DEFAULT_VALVE_DURATION_MINUTES,
+                    )
         for sid, entities in entities_by_subentry_id.items():
             async_add_entities(entities, config_subentry_id=sid)
 
@@ -200,4 +234,56 @@ class GardenaPumpDrippingAlert(GardenaEntity, NumberEntity):
             "Set dripping alert timeout for device %s to %s seconds",
             self._device.id,
             int(value),
+        )
+
+
+class GardenaValveDuration(GardenaEntity, NumberEntity):
+    _attr_native_min_value = 1
+    # Matches the ceiling the GARDENA app offers; how the firmware itself
+    # handles the maximum is not validated yet.
+    _attr_native_max_value = 180
+    _attr_native_step = 1
+    _attr_native_unit_of_measurement = UnitOfTime.MINUTES
+    _attr_mode = NumberMode.BOX
+    _attr_entity_category = EntityCategory.CONFIG
+
+    def __init__(
+        self,
+        coordinator: GardenaSmartLocalCoordinator,
+        entry: ConfigEntry,
+        device: Device,
+        valve_id: int,
+    ) -> None:
+        super().__init__(coordinator, device)
+        self._entry = entry
+        self._valve_id = valve_id
+        self._attr_unique_id = f"{device.id}_valve_{valve_id}_duration"
+        self._attr_name = (
+            f"Valve {valve_id + 1} Default Watering Duration"
+            if len(device.valve_ids) > 1
+            else "Default Watering Duration"
+        )
+        self._attr_icon = "mdi:timer-outline"
+
+    # Stored in the config subentry rather than read from the device, so it
+    # stays settable while the gateway or the device itself is unreachable.
+    @property
+    def available(self) -> bool:
+        return True
+
+    @property
+    def native_value(self) -> float | None:
+        return get_valve_duration_minutes(self._entry, self._device.id, self._valve_id)
+
+    async def async_set_native_value(self, value: float) -> None:
+        minutes = int(value)
+        async_set_valve_duration_minutes(
+            self.hass, self._entry, self._device.id, self._valve_id, minutes
+        )
+        self.async_write_ha_state()
+        _LOGGER.info(
+            "Set valve duration for device %s valve_id=%s to %s minutes",
+            self._device.id,
+            self._valve_id,
+            minutes,
         )

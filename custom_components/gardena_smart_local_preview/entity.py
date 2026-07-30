@@ -6,22 +6,57 @@ from __future__ import annotations
 
 from gardena_smart_local_api.devices.device import Device
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import callback
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN
+from .const import CONF_VALVE_DURATIONS, DEFAULT_VALVE_DURATION_MINUTES, DOMAIN
 from .coordinator import GardenaSmartLocalCoordinator
 
 
 def find_device_subentry_id(entry: ConfigEntry, device_id: str) -> str | None:
     return next(
         (
-            sid
-            for sid, se in entry.subentries.items()
+            subentry_id
+            for subentry_id, se in entry.subentries.items()
             if se.data.get("device_id") == device_id
         ),
         None,
+    )
+
+
+def get_valve_duration_minutes(
+    entry: ConfigEntry, device_id: str, valve_id: int
+) -> int:
+    # Falls back to the default for devices without a subentry, and for valves
+    # the user has never configured. Keys are strings because subentry data
+    # round-trips through JSON.
+    subentry_id = find_device_subentry_id(entry, device_id)
+    if subentry_id is None:
+        return DEFAULT_VALVE_DURATION_MINUTES
+    durations = entry.subentries[subentry_id].data.get(CONF_VALVE_DURATIONS, {})
+    minutes = durations.get(str(valve_id))
+    if not isinstance(minutes, int):
+        return DEFAULT_VALVE_DURATION_MINUTES
+    return minutes
+
+
+@callback
+def async_set_valve_duration_minutes(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    device_id: str,
+    valve_id: int,
+    minutes: int,
+) -> None:
+    subentry_id = find_device_subentry_id(entry, device_id)
+    if subentry_id is None:
+        return
+    subentry = entry.subentries[subentry_id]
+    durations = dict(subentry.data.get(CONF_VALVE_DURATIONS, {}))
+    durations[str(valve_id)] = minutes
+    hass.config_entries.async_update_subentry(
+        entry, subentry, data={**subentry.data, CONF_VALVE_DURATIONS: durations}
     )
 
 
