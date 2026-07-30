@@ -38,6 +38,18 @@
       }
     }
   },
+  "services": {
+    "open_valve": {
+      "name": "Open valve",
+      "description": "Opens a valve, optionally overriding its configured duration for this call only.",
+      "fields": {
+        "duration": {
+          "name": "Duration",
+          "description": "How long to keep the valve open, in seconds (60-10800). Defaults to the valve's configured duration if omitted."
+        }
+      }
+    }
+  },
   "config": {
     "step": {
       "user": {
