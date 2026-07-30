@@ -38,6 +38,18 @@
       }
     }
   },
+  "services": {
+    "open_valve": {
+      "name": "Ventil öffnen",
+      "description": "Öffnet ein Ventil, optional mit einer abweichenden Dauer nur für diesen Aufruf.",
+      "fields": {
+        "duration": {
+          "name": "Dauer",
+          "description": "Wie lange das Ventil geöffnet bleibt, in Sekunden (60-10800). Ohne Angabe wird die konfigurierte Dauer des Ventils verwendet."
+        }
+      }
+    }
+  },
   "config": {
     "step": {
       "user": {
