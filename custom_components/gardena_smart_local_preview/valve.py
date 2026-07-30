@@ -14,7 +14,11 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .coordinator import GardenaSmartLocalCoordinator
-from .entity import GardenaEntity, find_device_subentry_id
+from .entity import (
+    GardenaEntity,
+    find_device_subentry_id,
+    get_valve_duration_minutes,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -51,7 +55,7 @@ async def async_setup_entry(
                     continue
                 known_valves.add(key)
                 entities_by_subentry_id.setdefault(sid, []).append(
-                    GardenaValve(coordinator, device, valve_id)
+                    GardenaValve(coordinator, entry, device, valve_id)
                 )
                 _LOGGER.info(
                     "Adding new valve entity for device %s, valve %s",
@@ -69,10 +73,12 @@ class GardenaValve(GardenaEntity, ValveEntity):
     def __init__(
         self,
         coordinator: GardenaSmartLocalCoordinator,
+        entry: ConfigEntry,
         device: Device,
         valve_id: int = 0,
     ) -> None:
         super().__init__(coordinator, device)
+        self._entry = entry
         self._valve_id = valve_id
         self._attr_unique_id = f"{device.id}_valve_{valve_id}"
         self._attr_name = f"Valve {valve_id + 1}" if len(device.valve_ids) > 1 else None
@@ -99,11 +105,19 @@ class GardenaValve(GardenaEntity, ValveEntity):
         return not is_opened
 
     async def async_open_valve(self, **kwargs: Any) -> None:
+        minutes = get_valve_duration_minutes(
+            self._entry, self._device.id, self._valve_id
+        )
         await self.coordinator.send_request(
             self._device.id,
-            self._device.build_open_valve_obj(self._valve_id, 1800),
+            self._device.build_open_valve_obj(self._valve_id, minutes * 60),
         )
-        _LOGGER.info("Opening valve %s valve_id=%s", self._device.id, self._valve_id)
+        _LOGGER.info(
+            "Opening valve %s valve_id=%s duration=%s minutes",
+            self._device.id,
+            self._valve_id,
+            minutes,
+        )
 
     async def async_close_valve(self, **kwargs: Any) -> None:
         await self.coordinator.send_request(
