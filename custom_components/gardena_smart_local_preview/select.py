@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import logging
+from typing import ClassVar
 
 from gardena_smart_local_api.devices import Pump
 from gardena_smart_local_api.devices.irrigation import PumpOperatingMode
@@ -60,7 +61,7 @@ async def async_setup_entry(
 
 
 class GardenaPumpOperatingModeSelect(GardenaEntity, SelectEntity):
-    _attr_options = list(_OPTION_TO_MODE.keys())
+    _attr_options: ClassVar = list(_OPTION_TO_MODE.keys())
 
     def __init__(
         self,
