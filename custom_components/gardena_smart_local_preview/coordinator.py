@@ -160,7 +160,7 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
                 if self._first_connect_result and not self._first_connect_result.done():
                     self._first_connect_result.cancel()
                 break
-            except Exception as err:
+            except Exception as err:  # noqa: BLE001 - any transport error must trigger a reconnect
                 if self._first_connect_result and not self._first_connect_result.done():
                     self._first_connect_result.set_exception(err)
                 _LOGGER.error("WebSocket error: %s", err)
@@ -172,8 +172,8 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
                         task.cancel()
                         try:
                             await task
-                        except (asyncio.CancelledError, Exception):
-                            pass
+                        except (asyncio.CancelledError, Exception) as err:  # noqa: BLE001 - best-effort cleanup, cancellation is expected
+                            _LOGGER.debug("Error awaiting cancelled task: %s", err)
                 # Cancel any pending reply futures so waiters don't hang
                 for fut in self._pending_replies.values():
                     if not fut.done():
@@ -204,7 +204,7 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
                 raw = await self._msg_queue.get()
                 try:
                     messages = IngressMessageList.model_validate_json(raw)
-                except Exception:
+                except Exception:  # noqa: BLE001 - malformed message, ignore and keep reading
                     _LOGGER.debug(
                         "Ignoring non-list message from GARDENA smart Gateway: %s", raw
                     )
@@ -297,7 +297,7 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
             if updated:
                 self.async_set_updated_data(self._devices)
 
-        except Exception as err:
+        except Exception as err:  # noqa: BLE001 - one bad message must not crash the coordinator
             _LOGGER.warning("Error handling messages (may be non-critical): %s", err)
 
     def _expire_includable(self, instance_id: str) -> None:
@@ -385,7 +385,7 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
         except asyncio.TimeoutError:
             _LOGGER.error("Timeout waiting for inclusion reply for %s", device_id)
             return None
-        except Exception as err:
+        except Exception as err:  # noqa: BLE001 - report failure to the config flow instead of raising
             _LOGGER.error("Error including device %s: %s", instance_id, err)
             return None
 
@@ -410,7 +410,7 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
                     # point; the caller schedules async_set_updated_data as a
                     # task so it runs after _async_finish_flow adds the subentry.
                     await self._do_discovery(broadcast=False)
-                except Exception as err:
+                except Exception as err:  # noqa: BLE001 - inclusion already succeeded, don't fail it over this
                     _LOGGER.warning("Re-discovery after inclusion failed: %s", err)
                     return None
                 if info.device_id not in self._devices:
@@ -447,7 +447,7 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
         except asyncio.TimeoutError:
             _LOGGER.error("Timeout waiting for exclusion reply for %s", device_id)
             return False
-        except Exception as err:
+        except Exception as err:  # noqa: BLE001 - report failure to the config flow instead of raising
             _LOGGER.error("Error excluding device %s: %s", device_id, err)
             return False
 
@@ -475,7 +475,7 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
         except asyncio.TimeoutError:
             _LOGGER.debug("Timeout refreshing firmware state for %s", device_id)
             return
-        except Exception as err:
+        except Exception as err:  # noqa: BLE001 - best-effort refresh, must not disrupt the coordinator
             _LOGGER.debug("Error refreshing firmware state for %s: %s", device_id, err)
             return
 
@@ -507,7 +507,7 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
         try:
             for device in devices.values():
                 self._update_device(device)
-        except Exception as err:
+        except Exception as err:  # noqa: BLE001 - one bad device must not stop the discovery update
             _LOGGER.warning("Failed to update devices: %s", err)
 
     async def send_request(
