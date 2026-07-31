@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import logging
 
+from gardena_smart_local_api.devices.device import Device
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
     BinarySensorEntity,
@@ -16,7 +17,6 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .coordinator import GardenaSmartLocalCoordinator
 from .entity import GardenaEntity, find_device_subentry_id
-from gardena_smart_local_api.devices.device import Device
 
 _LOGGER = logging.getLogger(__name__)
 

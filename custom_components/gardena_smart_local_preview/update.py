@@ -7,6 +7,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from gardena_smart_local_api.devices.device import Device, FirmwareUpdateState
 from homeassistant.components.update import (
     UpdateDeviceClass,
     UpdateEntity,
@@ -18,7 +19,6 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .coordinator import GardenaSmartLocalCoordinator
 from .entity import GardenaEntity, find_device_subentry_id
-from gardena_smart_local_api.devices.device import Device, FirmwareUpdateState
 
 _LOGGER = logging.getLogger(__name__)
 

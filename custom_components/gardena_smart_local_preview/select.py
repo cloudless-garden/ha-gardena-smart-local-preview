@@ -6,6 +6,8 @@ from __future__ import annotations
 
 import logging
 
+from gardena_smart_local_api.devices import Pump
+from gardena_smart_local_api.devices.irrigation import PumpOperatingMode
 from homeassistant.components.select import SelectEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -13,8 +15,6 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .coordinator import GardenaSmartLocalCoordinator
 from .entity import GardenaEntity, find_device_subentry_id
-from gardena_smart_local_api.devices import Pump
-from gardena_smart_local_api.devices.irrigation import PumpOperatingMode
 
 _LOGGER = logging.getLogger(__name__)
 
