@@ -93,7 +93,7 @@ class GardenaButtonConfigTime(GardenaEntity, NumberEntity):
         seconds = device.button_config_time
         if seconds is None:
             return None
-        return int(round(seconds / 60))
+        return round(seconds / 60)
 
     async def async_set_native_value(self, value: float) -> None:
         await self.coordinator.send_request(

@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import logging
+from typing import ClassVar
 
 from gardena_smart_local_api.devices import Pump
 from gardena_smart_local_api.devices.device import Device, FirmwareUpdateState
@@ -408,7 +409,7 @@ class GardenaScheduleCountSensor(GardenaEntity, SensorEntity):
 
 class GardenaFirmwareUpdateStateSensor(GardenaEntity, SensorEntity):
     _attr_device_class = SensorDeviceClass.ENUM
-    _attr_options = [str(state) for state in FirmwareUpdateState]
+    _attr_options: ClassVar = [str(state) for state in FirmwareUpdateState]
 
     def __init__(
         self,
