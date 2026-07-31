@@ -7,8 +7,6 @@ import logging
 
 import aiohttp
 import voluptuous as vol
-from yarl import URL
-
 from homeassistant.config_entries import (
     ConfigEntry,
     ConfigFlow,
@@ -16,11 +14,12 @@ from homeassistant.config_entries import (
     ConfigSubentryFlow,
     SubentryFlowResult,
 )
+from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_PORT
 from homeassistant.core import callback
 from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
-from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_PORT
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.util.ssl import get_default_no_verify_context
+from yarl import URL
 
 from .const import DEFAULT_PORT, DOMAIN
 from .coordinator import GardenaSmartLocalCoordinator
@@ -169,14 +168,16 @@ async def _async_try_connect(host: str, port: int, password: str) -> str | None:
     auth_b64 = base64.b64encode(f"_:{password}".encode()).decode("ascii")
 
     try:
-        async with aiohttp.ClientSession() as session:
-            async with session.ws_connect(
+        async with (
+            aiohttp.ClientSession() as session,
+            session.ws_connect(
                 URL.build(scheme="wss", host=host, port=port),
                 ssl=ssl_context,
                 headers={"Authorization": f"Basic {auth_b64}"},
                 timeout=aiohttp.ClientTimeout(total=10),
-            ) as ws:
-                await ws.close()
+            ) as ws,
+        ):
+            await ws.close()
     except aiohttp.WSServerHandshakeError as err:
         if err.status == 401:
             return "invalid_auth"

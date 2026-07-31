@@ -9,7 +9,6 @@ from __future__ import annotations
 import logging
 
 from gardena_smart_local_api.devices import Device, MowerState
-
 from homeassistant.components.lawn_mower import (
     LawnMowerActivity,
     LawnMowerEntity,
