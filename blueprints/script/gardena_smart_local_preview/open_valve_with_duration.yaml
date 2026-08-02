@@ -1,0 +1,40 @@
+# SPDX-FileCopyrightText: 2026 GARDENA GmbH
+#
+# SPDX-License-Identifier: Apache-2.0
+
+blueprint:
+  name: Open GARDENA valve (with duration)
+  description: >-
+    Opens a GARDENA valve, optionally overriding its
+    configured duration for this run only.
+  domain: script
+  source_url: https://github.com/cloudless-garden/ha-gardena-smart-local-preview/blob/main/blueprints/script/gardena_smart_local_preview/open_valve_with_duration.yaml
+  input:
+    valve:
+      name: Valve
+      description: The valve to open.
+      selector:
+        entity:
+          filter:
+            integration: gardena_smart_local_preview
+            domain: valve
+
+fields:
+  duration:
+    name: Duration
+    description: How long to keep the valve open, in seconds.
+    required: false
+    example: 900
+    selector:
+      number:
+        min: 60
+        max: 10800
+        unit_of_measurement: s
+        mode: box
+
+sequence:
+  - action: gardena_smart_local_preview.open_valve
+    target:
+      entity_id: !input valve
+    data:
+      duration: "{{ duration | default(omit) }}"
