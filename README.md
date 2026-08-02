@@ -81,6 +81,21 @@ gardena_smart_local_preview:
 
 After adding the configuration, restart Home Assistant.
 
+## Blueprints
+
+### Open Valve (with duration)
+
+The `open_valve` action lets you override a valve's configured duration per
+call, but Home Assistant has no built-in dashboard card that prompts for a
+service field on tap. This blueprint wraps `open_valve` in a script, whose
+more-info dialog does render the `duration` field as a form — so you can pick
+a one-off duration from the dashboard without writing a custom card.
+
+[![Open your Home Assistant instance and show the blueprint import dialog with a specific blueprint pre-filled.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2Fcloudless-garden%2Fha-gardena-smart-local-preview%2Fmain%2Fblueprints%2Fscript%2Fgardena_smart_local_preview%2Fopen_valve_with_duration.yaml)
+
+After importing, create a script from the blueprint, pick the valve, and add
+the resulting script entity to your dashboard.
+
 ## Removal
 
 1. Go to **Settings → Devices & Services**
