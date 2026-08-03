@@ -159,8 +159,9 @@ class GardenaButtonConfigTime(GardenaEntity, NumberEntity):
             request = self._device.build_set_button_config_time_obj(seconds)
         await self.coordinator.send_request(self._device.id, request)
         _LOGGER.info(
-            "Set button config time for device %s to %s minutes",
+            "Set button config time for device %s, valve %s to %s minutes",
             self._device.id,
+            self._valve_id,
             int(value),
         )
 
