@@ -253,7 +253,7 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
             replies = await self.send_request(
                 "discovery", discovery, wait_for_response_sec=30
             )
-        except asyncio.TimeoutError:
+        except TimeoutError:
             raise RuntimeError(
                 f"Timed out waiting for discovery replies from GARDENA smart Gateway (expected {n})"
             )
@@ -395,7 +395,7 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
             replies = await self.send_request(
                 instance_id, request, wait_for_response_sec=INCLUDE_REPLY_TIMEOUT
             )
-        except asyncio.TimeoutError:
+        except TimeoutError:
             _LOGGER.error("Timeout waiting for inclusion reply for %s", device_id)
             return None
         except Exception as err:  # noqa: BLE001 - report failure to the config flow instead of raising
@@ -457,7 +457,7 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
             replies = await self.send_request(
                 device_id, request, wait_for_response_sec=EXCLUDE_REPLY_TIMEOUT
             )
-        except asyncio.TimeoutError:
+        except TimeoutError:
             _LOGGER.error("Timeout waiting for exclusion reply for %s", device_id)
             return False
         except Exception as err:  # noqa: BLE001 - report failure to the config flow instead of raising
@@ -485,7 +485,7 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
             replies = await self.send_request(
                 device_id, request, wait_for_response_sec=FIRMWARE_REPLY_TIMEOUT
             )
-        except asyncio.TimeoutError:
+        except TimeoutError:
             _LOGGER.debug("Timeout refreshing firmware state for %s", device_id)
             return
         except Exception as err:  # noqa: BLE001 - best-effort refresh, must not disrupt the coordinator
@@ -554,7 +554,7 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
                 try:
                     async with asyncio.timeout(wait_for_response_sec):
                         replies = await asyncio.gather(*futures.values())
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     for rid in pending_ids:
                         self._pending_replies.pop(rid, None)
                     raise
