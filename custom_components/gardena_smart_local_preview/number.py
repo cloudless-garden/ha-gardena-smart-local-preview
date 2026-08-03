@@ -96,9 +96,10 @@ class GardenaButtonConfigTime(GardenaEntity, NumberEntity):
         multi_valve = len(device.valve_ids) > 1
         suffix = f"_{valve_id}" if multi_valve else ""
         self._attr_unique_id = f"{device.id}_button_config_time{suffix}"
-        self._attr_name = (
-            f"Button Time {valve_id + 1}" if multi_valve else "Button Time"
-        )
+        if multi_valve:
+            self._attr_name = f"Button Watering Duration {valve_id + 1}"
+        else:
+            self._attr_name = "Button Watering Duration"
         self._attr_icon = "mdi:timer-outline"
 
     @property
