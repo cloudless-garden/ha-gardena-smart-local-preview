@@ -31,9 +31,6 @@
       },
       "turn_on_pressure": {
         "name": "Einschaltdruck"
-      },
-      "dripping_alert_timeout": {
-        "name": "Tropfalarm-Zeitüberschreitung"
       }
     },
     "select": {
@@ -42,6 +39,14 @@
         "state": {
           "scheduled": "Geplant",
           "automatic": "Automatisch"
+        }
+      },
+      "dripping_alert": {
+        "name": "Tropfalarm",
+        "state": {
+          "standard": "Standard",
+          "sensitive": "Empfindlich",
+          "deactivated": "Deaktiviert"
         }
       }
     },

@@ -31,9 +31,6 @@
       },
       "turn_on_pressure": {
         "name": "Turn-on pressure"
-      },
-      "dripping_alert_timeout": {
-        "name": "Dripping alert timeout"
       }
     },
     "select": {
@@ -42,6 +39,14 @@
         "state": {
           "scheduled": "Scheduled",
           "automatic": "Automatic"
+        }
+      },
+      "dripping_alert": {
+        "name": "Dripping alert",
+        "state": {
+          "standard": "Standard",
+          "sensitive": "Sensitive",
+          "deactivated": "Deactivated"
         }
       }
     },
