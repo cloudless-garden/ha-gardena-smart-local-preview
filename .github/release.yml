@@ -1,0 +1,12 @@
+# SPDX-FileCopyrightText: 2026 GARDENA GmbH
+#
+# SPDX-License-Identifier: Apache-2.0
+
+changelog:
+  categories:
+    - title: ⚠️ Breaking Changes
+      labels:
+        - breaking-change
+    - title: Other Changes
+      labels:
+        - "*"
