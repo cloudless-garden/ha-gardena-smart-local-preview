@@ -98,9 +98,8 @@ class GardenaPumpOperatingModeSelect(GardenaEntity, SelectEntity):
 
     async def async_select_option(self, option: str) -> None:
         mode = _OPTION_TO_MODE[option]
-        await self.coordinator.send_request(
-            self._device.id,
-            self._device.build_set_operating_mode_obj(mode),
+        await self._send_confirmed_command(
+            self._device.build_set_operating_mode_obj(mode)
         )
         _LOGGER.info("Set operating mode for device %s to %s", self._device.id, option)
 
@@ -128,9 +127,8 @@ class GardenaPumpDrippingAlert(GardenaEntity, SelectEntity):
 
     async def async_select_option(self, option: str) -> None:
         alert = _OPTION_TO_DRIPPING_ALERT[option]
-        await self.coordinator.send_request(
-            self._device.id,
-            self._device.build_set_dripping_alert_obj(alert.value),
+        await self._send_confirmed_command(
+            self._device.build_set_dripping_alert_obj(alert.value)
         )
         _LOGGER.info(
             "Set dripping alert timeout for device %s to %s", self._device.id, option

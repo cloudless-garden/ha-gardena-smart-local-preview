@@ -88,10 +88,7 @@ class GardenaIdentifyButton(GardenaEntity, ButtonEntity):
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
     async def async_press(self) -> None:
-        await self.coordinator.send_request(
-            self._device.id,
-            self._device.build_identify_obj(),
-        )
+        await self._send_confirmed_command(self._device.build_identify_obj())
         _LOGGER.info("Sent identify request for device %s", self._device.id)
 
 
@@ -103,9 +100,8 @@ class GardenaPumpResetFlowButton(GardenaEntity, ButtonEntity):
         self._attr_entity_category = EntityCategory.CONFIG
 
     async def async_press(self) -> None:
-        await self.coordinator.send_request(
-            self._device.id,
-            self._device.build_reset_flow_resettable_obj(),
+        await self._send_confirmed_command(
+            self._device.build_reset_flow_resettable_obj()
         )
         _LOGGER.info("Reset resettable flow for device %s", self._device.id)
 
@@ -118,9 +114,8 @@ class GardenaPumpResetValveErrorsButton(GardenaEntity, ButtonEntity):
         self._attr_entity_category = EntityCategory.CONFIG
 
     async def async_press(self) -> None:
-        await self.coordinator.send_request(
-            self._device.id,
-            self._device.build_reset_all_valve_errors_obj(),
+        await self._send_confirmed_command(
+            self._device.build_reset_all_valve_errors_obj()
         )
         _LOGGER.info("Reset valve errors for device %s", self._device.id)
 
@@ -133,9 +128,8 @@ class GardenaPumpResetTemperatureMinMaxButton(GardenaEntity, ButtonEntity):
         self._attr_entity_category = EntityCategory.CONFIG
 
     async def async_press(self) -> None:
-        await self.coordinator.send_request(
-            self._device.id,
-            self._device.build_reset_outlet_temperature_min_max_obj(),
+        await self._send_confirmed_command(
+            self._device.build_reset_outlet_temperature_min_max_obj()
         )
         _LOGGER.info("Reset temperature min/max for device %s", self._device.id)
 
@@ -153,8 +147,5 @@ class GardenaClearSchedulesButton(GardenaEntity, ButtonEntity):
         self._attr_unique_id = f"{device.id}_clear_schedules"
 
     async def async_press(self) -> None:
-        await self.coordinator.send_request(
-            self._device.id,
-            self._device.build_clear_schedules_obj(),
-        )
+        await self._send_confirmed_command(self._device.build_clear_schedules_obj())
         _LOGGER.info("Cleared schedules for device %s", self._device.id)
