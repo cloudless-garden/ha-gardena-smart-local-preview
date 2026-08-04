@@ -9,6 +9,7 @@ from typing import ClassVar
 
 from gardena_smart_local_api.devices import Pump
 from gardena_smart_local_api.devices.device import Device, FirmwareUpdateState
+from gardena_smart_local_api.devices.irrigation import PumpState
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
@@ -364,6 +365,9 @@ class GardenaPumpFlowSinceResetSensor(GardenaEntity, SensorEntity):
 
 
 class GardenaPumpStateSensor(GardenaEntity, SensorEntity):
+    _attr_device_class = SensorDeviceClass.ENUM
+    _attr_options: ClassVar = [str(state) for state in PumpState]
+
     def __init__(
         self,
         coordinator: GardenaSmartLocalCoordinator,

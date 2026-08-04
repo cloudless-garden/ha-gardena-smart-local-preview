@@ -77,7 +77,14 @@
         "name": "Flow since reset"
       },
       "pump_state": {
-        "name": "Pump state"
+        "name": "Pump state",
+        "state": {
+          "pump_is_just_starting": "Pump is starting",
+          "water_in_the_pump_body": "Water in the pump",
+          "no_water_in_the_pump_body": "No water in the pump",
+          "flow_after_5s": "Flow after 5 seconds",
+          "no_flow_after_5s": "No flow after 5 seconds"
+        }
       },
       "schedule_count": {
         "name": "Schedule count"

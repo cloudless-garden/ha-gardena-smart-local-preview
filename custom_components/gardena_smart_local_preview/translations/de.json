@@ -77,7 +77,14 @@
         "name": "Durchfluss seit Rücksetzung"
       },
       "pump_state": {
-        "name": "Pumpenstatus"
+        "name": "Pumpenstatus",
+        "state": {
+          "pump_is_just_starting": "Pumpe startet jetzt",
+          "water_in_the_pump_body": "Wasser in der Pumpe",
+          "no_water_in_the_pump_body": "Kein Wasser in der Pumpe",
+          "flow_after_5s": "Durchfluss nach 5 Sekunden",
+          "no_flow_after_5s": "Kein Durchfluss nach 5 Sekunden"
+        }
       },
       "schedule_count": {
         "name": "Anzahl Zeitpläne"
