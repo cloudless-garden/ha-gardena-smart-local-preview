@@ -130,9 +130,8 @@ class GardenaValve(GardenaEntity, ValveEntity):
                 self._entry, self._device.id, self._valve_id
             )
             duration = minutes * 60
-        await self.coordinator.send_request(
-            self._device.id,
-            self._device.build_open_valve_obj(self._valve_id, duration),
+        await self._send_confirmed_command(
+            self._device.build_open_valve_obj(self._valve_id, duration)
         )
         _LOGGER.info(
             "Opening valve %s valve_id=%s duration=%s seconds",
@@ -142,8 +141,7 @@ class GardenaValve(GardenaEntity, ValveEntity):
         )
 
     async def async_close_valve(self, **kwargs: Any) -> None:
-        await self.coordinator.send_request(
-            self._device.id,
-            self._device.build_close_valve_obj(self._valve_id),
+        await self._send_confirmed_command(
+            self._device.build_close_valve_obj(self._valve_id)
         )
         _LOGGER.info("Closing valve %s valve_id=%s", self._device.id, self._valve_id)

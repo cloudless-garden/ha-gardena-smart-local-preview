@@ -155,7 +155,7 @@ class GardenaButtonConfigTime(GardenaEntity, NumberEntity):
             )
         else:
             request = self._device.build_set_button_config_time_obj(seconds)
-        await self.coordinator.send_request(self._device.id, request)
+        await self._send_confirmed_command(request)
         _LOGGER.info(
             "Set button config time for device %s, valve %s to %s minutes",
             self._device.id,
@@ -189,9 +189,8 @@ class GardenaPumpTurnOnPressure(GardenaEntity, NumberEntity):
         return device.turn_on_pressure
 
     async def async_set_native_value(self, value: float) -> None:
-        await self.coordinator.send_request(
-            self._device.id,
-            self._device.build_set_turn_on_pressure_obj(value),
+        await self._send_confirmed_command(
+            self._device.build_set_turn_on_pressure_obj(value)
         )
         _LOGGER.info(
             "Set turn-on pressure for device %s to %s bar",

@@ -80,17 +80,13 @@ class GardenaPowerSwitch(GardenaEntity, SwitchEntity):
         return device.is_output_enabled
 
     async def async_turn_on(self, **kwargs: Any) -> None:
-        await self.coordinator.send_request(
-            self._device.id,
-            self._device.build_enable_output_obj(DEFAULT_ON_DURATION_SECONDS),
+        await self._send_confirmed_command(
+            self._device.build_enable_output_obj(DEFAULT_ON_DURATION_SECONDS)
         )
         _LOGGER.info("Turning on switch %s", self._device.id)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
-        await self.coordinator.send_request(
-            self._device.id,
-            self._device.build_disable_output_obj(),
-        )
+        await self._send_confirmed_command(self._device.build_disable_output_obj())
         _LOGGER.info("Turning off switch %s", self._device.id)
 
 
@@ -112,15 +108,11 @@ class GardenaPumpSwitch(GardenaEntity, SwitchEntity):
         return device.is_running
 
     async def async_turn_on(self, **kwargs: Any) -> None:
-        await self.coordinator.send_request(
-            self._device.id,
-            self._device.build_start_obj(DEFAULT_ON_DURATION_SECONDS),
+        await self._send_confirmed_command(
+            self._device.build_start_obj(DEFAULT_ON_DURATION_SECONDS)
         )
         _LOGGER.info("Turning on pump %s", self._device.id)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
-        await self.coordinator.send_request(
-            self._device.id,
-            self._device.build_stop_obj(),
-        )
+        await self._send_confirmed_command(self._device.build_stop_obj())
         _LOGGER.info("Turning off pump %s", self._device.id)

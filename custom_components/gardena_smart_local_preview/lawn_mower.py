@@ -102,25 +102,18 @@ class GardenaMower(GardenaEntity, LawnMowerEntity):
         return None
 
     async def async_start_mowing(self) -> None:
-        await self.coordinator.send_request(
-            self._device.id,
-            self._device.build_start_mowing_obj(28800),  # 8 hours
+        await self._send_confirmed_command(
+            self._device.build_start_mowing_obj(28800)  # 8 hours
         )
         _LOGGER.info("Start mowing with %s", self._device.id)
 
     async def async_dock(self) -> None:
-        await self.coordinator.send_request(
-            self._device.id,
-            self._device.build_stop_mowing_obj(),
-        )
+        await self._send_confirmed_command(self._device.build_stop_mowing_obj())
         _LOGGER.info("Stop mowing with %s", self._device.id)
 
     async def async_pause(self) -> None:
         if hasattr(self._device, "build_pause_mowing_obj"):
-            await self.coordinator.send_request(
-                self._device.id,
-                self._device.build_pause_mowing_obj(),
-            )
+            await self._send_confirmed_command(self._device.build_pause_mowing_obj())
             _LOGGER.info("Pause mowing with %s", self._device.id)
         else:
             _LOGGER.warning("Pause not supported for device %s", self._device.id)

@@ -126,8 +126,7 @@ class GardenaFirmwareUpdate(GardenaEntity, UpdateEntity):
         device = self.coordinator.data.get(self._device.id)
         if device:
             self._held_latest_version = device.available_software_version
-        await self.coordinator.send_request(
-            self._device.id,
-            self._device.build_install_firmware_update_obj(),
+        await self._send_confirmed_command(
+            self._device.build_install_firmware_update_obj()
         )
         _LOGGER.info("Sent firmware install request for device %s", self._device.id)

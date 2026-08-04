@@ -34,6 +34,7 @@ EXCLUDE_REPLY_TIMEOUT = 10
 INCLUDABLE_DEVICE_HEARTBEAT_TIMEOUT = 25
 INCLUSION_TIMEOUT = 30
 FIRMWARE_REPLY_TIMEOUT = 10
+COMMAND_REPLY_TIMEOUT = 10
 
 
 @dataclass
@@ -78,6 +79,14 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
         self._includable_devices: dict[str, IncludableDeviceInfo] = {}
         self._includable_timeouts: dict[str, asyncio.TimerHandle] = {}
         self._first_connect_result: asyncio.Future[None] | None = None
+        # Devices with a command reply still outstanding. While a device is
+        # in here, incoming Events for it are merged into self._devices but
+        # not broadcast — the gateway reports state changes (e.g. a valve
+        # opening) across several back-to-back frames, each of which would
+        # otherwise flash an intermediate state in the UI. The final,
+        # confirmed state is broadcast once the reply for the last
+        # outstanding command on that device arrives (see send_request).
+        self._pending_reply_devices: dict[str, int] = {}
 
     async def _async_update_data(self) -> DeviceMap:
         return self._devices
@@ -179,6 +188,7 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
                     if not fut.done():
                         fut.cancel()
                 self._pending_replies.clear()
+                self._pending_reply_devices.clear()
                 # Let entities re-check availability now that we're disconnected.
                 self.async_update_listeners()
 
@@ -258,7 +268,7 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
         try:
             _LOGGER.debug("Handling %d message(s)", len(messages))
 
-            updated = False
+            updated_device_ids: set[str] = set()
 
             for msg in messages:
                 if isinstance(msg, Event):
@@ -288,13 +298,16 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
                                     device_id,
                                     device.is_online,
                                 )
-                            updated = True
+                            updated_device_ids.add(device_id)
                     else:
                         _LOGGER.debug(
                             "Event does not have device ID, ignoring: %s", msg
                         )
 
-            if updated:
+            # Devices with a command in flight are merged above but not
+            # broadcast yet — send_request() flushes them once the reply for
+            # that command confirms the settled state.
+            if updated_device_ids - self._pending_reply_devices.keys():
                 self.async_set_updated_data(self._devices)
 
         except Exception as err:  # noqa: BLE001 - one bad message must not crash the coordinator
@@ -530,19 +543,32 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
                 rid: loop.create_future() for rid in pending_ids
             }
             self._pending_replies.update(futures)
-
-            await self._ws.send_str(request.model_dump_json())
-            _LOGGER.debug("Sent request to device %s: %s", device_id, request)
+            self._pending_reply_devices[device_id] = (
+                self._pending_reply_devices.get(device_id, 0) + 1
+            )
 
             try:
-                async with asyncio.timeout(wait_for_response_sec):
-                    replies = await asyncio.gather(*futures.values())
-            except asyncio.TimeoutError:
-                for rid in pending_ids:
-                    self._pending_replies.pop(rid, None)
-                raise
+                await self._ws.send_str(request.model_dump_json())
+                _LOGGER.debug("Sent request to device %s: %s", device_id, request)
 
-            return IngressMessageList(list(replies))
+                try:
+                    async with asyncio.timeout(wait_for_response_sec):
+                        replies = await asyncio.gather(*futures.values())
+                except asyncio.TimeoutError:
+                    for rid in pending_ids:
+                        self._pending_replies.pop(rid, None)
+                    raise
+
+                return IngressMessageList(list(replies))
+            finally:
+                remaining = self._pending_reply_devices.get(device_id, 1) - 1
+                if remaining <= 0:
+                    self._pending_reply_devices.pop(device_id, None)
+                    # Last outstanding command for this device settled —
+                    # broadcast the confirmed state now.
+                    self.async_set_updated_data(self._devices)
+                else:
+                    self._pending_reply_devices[device_id] = remaining
 
         await self._ws.send_str(request.model_dump_json())
         _LOGGER.debug("Sent request to device %s: %s", device_id, request)
