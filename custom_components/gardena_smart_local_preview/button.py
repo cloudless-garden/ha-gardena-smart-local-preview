@@ -83,7 +83,7 @@ class GardenaIdentifyButton(GardenaEntity, ButtonEntity):
     ) -> None:
         super().__init__(coordinator, device)
         self._attr_unique_id = f"{device.id}_identify"
-        self._attr_name = "Identify"
+        self._attr_translation_key = "identify"
         self._attr_icon = "mdi:crosshairs-gps"
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
@@ -99,7 +99,7 @@ class GardenaPumpResetFlowButton(GardenaEntity, ButtonEntity):
     def __init__(self, coordinator: GardenaSmartLocalCoordinator, device: Pump) -> None:
         super().__init__(coordinator, device)
         self._attr_unique_id = f"{device.id}_reset_flow"
-        self._attr_name = "Reset Resettable Flow"
+        self._attr_translation_key = "reset_resettable_flow"
         self._attr_entity_category = EntityCategory.CONFIG
 
     async def async_press(self) -> None:
@@ -114,7 +114,7 @@ class GardenaPumpResetValveErrorsButton(GardenaEntity, ButtonEntity):
     def __init__(self, coordinator: GardenaSmartLocalCoordinator, device: Pump) -> None:
         super().__init__(coordinator, device)
         self._attr_unique_id = f"{device.id}_reset_valve_errors"
-        self._attr_name = "Reset Valve Errors"
+        self._attr_translation_key = "reset_valve_errors"
         self._attr_entity_category = EntityCategory.CONFIG
 
     async def async_press(self) -> None:
@@ -129,7 +129,7 @@ class GardenaPumpResetTemperatureMinMaxButton(GardenaEntity, ButtonEntity):
     def __init__(self, coordinator: GardenaSmartLocalCoordinator, device: Pump) -> None:
         super().__init__(coordinator, device)
         self._attr_unique_id = f"{device.id}_reset_temperature_min_max"
-        self._attr_name = "Reset Temperature Min/Max"
+        self._attr_translation_key = "reset_temperature_min_max"
         self._attr_entity_category = EntityCategory.CONFIG
 
     async def async_press(self) -> None:
@@ -143,8 +143,7 @@ class GardenaPumpResetTemperatureMinMaxButton(GardenaEntity, ButtonEntity):
 class GardenaClearSchedulesButton(GardenaEntity, ButtonEntity):
     _attr_entity_category = EntityCategory.CONFIG
     _attr_entity_registry_enabled_default = False
-    _attr_has_entity_name = True
-    _attr_name = "Clear Schedules"
+    _attr_translation_key = "clear_schedules"
     _attr_icon = "mdi:delete-alert-outline"
 
     def __init__(

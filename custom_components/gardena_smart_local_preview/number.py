@@ -131,9 +131,10 @@ class GardenaButtonConfigTime(GardenaEntity, NumberEntity):
         suffix = f"_{valve_id}" if multi_valve else ""
         self._attr_unique_id = f"{device.id}_button_config_time{suffix}"
         if multi_valve:
-            self._attr_name = f"Button Watering Duration {valve_id + 1}"
+            self._attr_translation_key = "button_watering_duration_numbered"
+            self._attr_translation_placeholders = {"number": str(valve_id + 1)}
         else:
-            self._attr_name = "Button Watering Duration"
+            self._attr_translation_key = "button_watering_duration"
         self._attr_icon = "mdi:timer-outline"
 
     @property
@@ -181,7 +182,7 @@ class GardenaPumpTurnOnPressure(GardenaEntity, NumberEntity):
     ) -> None:
         super().__init__(coordinator, device)
         self._attr_unique_id = f"{device.id}_turn_on_pressure"
-        self._attr_name = "Turn-On Pressure"
+        self._attr_translation_key = "turn_on_pressure"
 
     @property
     def native_value(self) -> float | None:
@@ -217,7 +218,7 @@ class GardenaPumpDrippingAlert(GardenaEntity, NumberEntity):
     ) -> None:
         super().__init__(coordinator, device)
         self._attr_unique_id = f"{device.id}_dripping_alert"
-        self._attr_name = "Dripping Alert Timeout"
+        self._attr_translation_key = "dripping_alert_timeout"
 
     @property
     def native_value(self) -> float | None:
