@@ -1,6 +1,87 @@
 {
   "entity": {
+    "binary_sensor": {
+      "frost_warning": {
+        "name": "Frost warning"
+      }
+    },
+    "button": {
+      "identify": {
+        "name": "Identify"
+      },
+      "reset_resettable_flow": {
+        "name": "Reset flow"
+      },
+      "reset_valve_errors": {
+        "name": "Reset valve errors"
+      },
+      "reset_temperature_min_max": {
+        "name": "Reset temperature min/max"
+      },
+      "clear_schedules": {
+        "name": "Clear schedules"
+      }
+    },
+    "number": {
+      "button_watering_duration": {
+        "name": "Button watering duration"
+      },
+      "button_watering_duration_numbered": {
+        "name": "Button {number} watering duration"
+      },
+      "turn_on_pressure": {
+        "name": "Turn-on pressure"
+      },
+      "dripping_alert_timeout": {
+        "name": "Dripping alert timeout"
+      }
+    },
+    "select": {
+      "operating_mode": {
+        "name": "Operating mode",
+        "state": {
+          "scheduled": "Scheduled",
+          "automatic": "Automatic"
+        }
+      }
+    },
     "sensor": {
+      "temperature": {
+        "name": "Temperature"
+      },
+      "soil_moisture": {
+        "name": "Soil moisture"
+      },
+      "light": {
+        "name": "Light"
+      },
+      "battery": {
+        "name": "Battery"
+      },
+      "rf_link_quality": {
+        "name": "RF link quality"
+      },
+      "outlet_pressure": {
+        "name": "Outlet pressure"
+      },
+      "outlet_temperature": {
+        "name": "Outlet temperature"
+      },
+      "flow_rate": {
+        "name": "Flow rate"
+      },
+      "total_flow": {
+        "name": "Total flow"
+      },
+      "flow_since_reset": {
+        "name": "Flow since reset"
+      },
+      "pump_state": {
+        "name": "Pump state"
+      },
+      "schedule_count": {
+        "name": "Schedule count"
+      },
       "firmware_update_state": {
         "name": "Firmware Update State",
         "state": {
@@ -9,6 +90,11 @@
           "downloaded": "Downloaded",
           "updating": "Updating"
         }
+      }
+    },
+    "valve": {
+      "valve": {
+        "name": "Valve {number}"
       }
     }
   },

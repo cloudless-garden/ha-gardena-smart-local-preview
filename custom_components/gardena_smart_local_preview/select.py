@@ -70,7 +70,7 @@ class GardenaPumpOperatingModeSelect(GardenaEntity, SelectEntity):
     ) -> None:
         super().__init__(coordinator, device)
         self._attr_unique_id = f"{device.id}_operating_mode"
-        self._attr_name = "Operating Mode"
+        self._attr_translation_key = "operating_mode"
 
     @property
     def current_option(self) -> str | None:

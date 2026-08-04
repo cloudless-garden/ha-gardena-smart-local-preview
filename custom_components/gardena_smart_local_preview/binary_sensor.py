@@ -66,7 +66,7 @@ class GardenaFrostWarningSensor(GardenaEntity, BinarySensorEntity):
     ) -> None:
         super().__init__(coordinator, device)
         self._attr_unique_id = f"{device.id}_frost_warning"
-        self._attr_name = "Frost Warning"
+        self._attr_translation_key = "frost_warning"
         self._attr_device_class = BinarySensorDeviceClass.COLD
         self._attr_icon = "mdi:snowflake-alert"
 

@@ -1,6 +1,87 @@
 {
   "entity": {
+    "binary_sensor": {
+      "frost_warning": {
+        "name": "Frostwarnung"
+      }
+    },
+    "button": {
+      "identify": {
+        "name": "Identifizieren"
+      },
+      "reset_resettable_flow": {
+        "name": "Durchfluss zurücksetzen"
+      },
+      "reset_valve_errors": {
+        "name": "Ventilfehler zurücksetzen"
+      },
+      "reset_temperature_min_max": {
+        "name": "Temperatur-Min/Max zurücksetzen"
+      },
+      "clear_schedules": {
+        "name": "Zeitpläne löschen"
+      }
+    },
+    "number": {
+      "button_watering_duration": {
+        "name": "Bewässerungsdauer per Taste"
+      },
+      "button_watering_duration_numbered": {
+        "name": "Bewässerungsdauer der Taste {number}"
+      },
+      "turn_on_pressure": {
+        "name": "Einschaltdruck"
+      },
+      "dripping_alert_timeout": {
+        "name": "Tropfalarm-Zeitüberschreitung"
+      }
+    },
+    "select": {
+      "operating_mode": {
+        "name": "Betriebsmodus",
+        "state": {
+          "scheduled": "Geplant",
+          "automatic": "Automatisch"
+        }
+      }
+    },
     "sensor": {
+      "temperature": {
+        "name": "Temperatur"
+      },
+      "soil_moisture": {
+        "name": "Bodenfeuchtigkeit"
+      },
+      "light": {
+        "name": "Licht"
+      },
+      "battery": {
+        "name": "Batterie"
+      },
+      "rf_link_quality": {
+        "name": "Funkverbindungsqualität"
+      },
+      "outlet_pressure": {
+        "name": "Auslassdruck"
+      },
+      "outlet_temperature": {
+        "name": "Auslasstemperatur"
+      },
+      "flow_rate": {
+        "name": "Durchflussrate"
+      },
+      "total_flow": {
+        "name": "Gesamtdurchfluss"
+      },
+      "flow_since_reset": {
+        "name": "Durchfluss seit Rücksetzung"
+      },
+      "pump_state": {
+        "name": "Pumpenstatus"
+      },
+      "schedule_count": {
+        "name": "Anzahl Zeitpläne"
+      },
       "firmware_update_state": {
         "name": "Firmware-Update-Status",
         "state": {
@@ -9,6 +90,11 @@
           "downloaded": "Heruntergeladen",
           "updating": "Wird aktualisiert"
         }
+      }
+    },
+    "valve": {
+      "valve": {
+        "name": "Ventil {number}"
       }
     }
   },

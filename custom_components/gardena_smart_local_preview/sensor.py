@@ -152,7 +152,7 @@ class GardenaTemperatureSensor(GardenaEntity, SensorEntity):
     ) -> None:
         super().__init__(coordinator, device)
         self._attr_unique_id = f"{device.id}_temperature"
-        self._attr_name = "Temperature"
+        self._attr_translation_key = "temperature"
         self._attr_device_class = SensorDeviceClass.TEMPERATURE
         self._attr_state_class = SensorStateClass.MEASUREMENT
         self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
@@ -174,7 +174,7 @@ class GardenaSoilMoistureSensor(GardenaEntity, SensorEntity):
     ) -> None:
         super().__init__(coordinator, device)
         self._attr_unique_id = f"{device.id}_soil_moisture"
-        self._attr_name = "Soil Moisture"
+        self._attr_translation_key = "soil_moisture"
         self._attr_device_class = SensorDeviceClass.MOISTURE
         self._attr_state_class = SensorStateClass.MEASUREMENT
         self._attr_native_unit_of_measurement = PERCENTAGE
@@ -196,7 +196,7 @@ class GardenaLightSensor(GardenaEntity, SensorEntity):
     ) -> None:
         super().__init__(coordinator, device)
         self._attr_unique_id = f"{device.id}_light"
-        self._attr_name = "Light"
+        self._attr_translation_key = "light"
         self._attr_device_class = SensorDeviceClass.ILLUMINANCE
         self._attr_state_class = SensorStateClass.MEASUREMENT
         self._attr_native_unit_of_measurement = LIGHT_LUX
@@ -218,7 +218,7 @@ class GardenaBatterySensor(GardenaEntity, SensorEntity):
     ) -> None:
         super().__init__(coordinator, device)
         self._attr_unique_id = f"{device.id}_battery"
-        self._attr_name = "Battery"
+        self._attr_translation_key = "battery"
         self._attr_device_class = SensorDeviceClass.BATTERY
         self._attr_state_class = SensorStateClass.MEASUREMENT
         self._attr_native_unit_of_measurement = PERCENTAGE
@@ -240,7 +240,7 @@ class GardenaRfLinkQualitySensor(GardenaEntity, SensorEntity):
     ) -> None:
         super().__init__(coordinator, device)
         self._attr_unique_id = f"{device.id}_rf_link_quality"
-        self._attr_name = "RF Link Quality"
+        self._attr_translation_key = "rf_link_quality"
         self._attr_icon = "mdi:signal"
         self._attr_state_class = SensorStateClass.MEASUREMENT
         self._attr_native_unit_of_measurement = PERCENTAGE
@@ -262,7 +262,7 @@ class GardenaPumpPressureSensor(GardenaEntity, SensorEntity):
     ) -> None:
         super().__init__(coordinator, device)
         self._attr_unique_id = f"{device.id}_outlet_pressure"
-        self._attr_name = "Outlet Pressure"
+        self._attr_translation_key = "outlet_pressure"
         self._attr_device_class = SensorDeviceClass.PRESSURE
         self._attr_state_class = SensorStateClass.MEASUREMENT
         self._attr_native_unit_of_measurement = UnitOfPressure.BAR
@@ -283,7 +283,7 @@ class GardenaPumpTemperatureSensor(GardenaEntity, SensorEntity):
     ) -> None:
         super().__init__(coordinator, device)
         self._attr_unique_id = f"{device.id}_outlet_temperature"
-        self._attr_name = "Outlet Temperature"
+        self._attr_translation_key = "outlet_temperature"
         self._attr_device_class = SensorDeviceClass.TEMPERATURE
         self._attr_state_class = SensorStateClass.MEASUREMENT
         self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
@@ -305,7 +305,7 @@ class GardenaPumpFlowRateSensor(GardenaEntity, SensorEntity):
     ) -> None:
         super().__init__(coordinator, device)
         self._attr_unique_id = f"{device.id}_flow_rate"
-        self._attr_name = "Flow Rate"
+        self._attr_translation_key = "flow_rate"
         self._attr_device_class = SensorDeviceClass.VOLUME_FLOW_RATE
         self._attr_state_class = SensorStateClass.MEASUREMENT
         self._attr_native_unit_of_measurement = UnitOfVolumeFlowRate.LITERS_PER_HOUR
@@ -327,7 +327,7 @@ class GardenaPumpFlowTotalSensor(GardenaEntity, SensorEntity):
     ) -> None:
         super().__init__(coordinator, device)
         self._attr_unique_id = f"{device.id}_flow_total"
-        self._attr_name = "Total Flow"
+        self._attr_translation_key = "total_flow"
         self._attr_device_class = SensorDeviceClass.WATER
         self._attr_state_class = SensorStateClass.TOTAL_INCREASING
         self._attr_native_unit_of_measurement = UnitOfVolume.CUBIC_METERS
@@ -349,7 +349,7 @@ class GardenaPumpFlowSinceResetSensor(GardenaEntity, SensorEntity):
     ) -> None:
         super().__init__(coordinator, device)
         self._attr_unique_id = f"{device.id}_flow_since_reset"
-        self._attr_name = "Flow Since Reset"
+        self._attr_translation_key = "flow_since_reset"
         self._attr_device_class = SensorDeviceClass.WATER
         self._attr_state_class = SensorStateClass.TOTAL_INCREASING
         self._attr_native_unit_of_measurement = UnitOfVolume.CUBIC_METERS
@@ -371,7 +371,7 @@ class GardenaPumpStateSensor(GardenaEntity, SensorEntity):
     ) -> None:
         super().__init__(coordinator, device)
         self._attr_unique_id = f"{device.id}_pump_state"
-        self._attr_name = "Pump State"
+        self._attr_translation_key = "pump_state"
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
     @property
@@ -386,8 +386,7 @@ class GardenaPumpStateSensor(GardenaEntity, SensorEntity):
 class GardenaScheduleCountSensor(GardenaEntity, SensorEntity):
     _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_entity_registry_enabled_default = False
-    _attr_has_entity_name = True
-    _attr_name = "Schedule Count"
+    _attr_translation_key = "schedule_count"
     _attr_icon = "mdi:calendar-check"
 
     def __init__(

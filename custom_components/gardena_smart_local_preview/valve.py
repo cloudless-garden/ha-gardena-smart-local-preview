@@ -94,7 +94,11 @@ class GardenaValve(GardenaEntity, ValveEntity):
         self._entry = entry
         self._valve_id = valve_id
         self._attr_unique_id = f"{device.id}_valve_{valve_id}"
-        self._attr_name = f"Valve {valve_id + 1}" if len(device.valve_ids) > 1 else None
+        if len(device.valve_ids) > 1:
+            self._attr_translation_key = "valve"
+            self._attr_translation_placeholders = {"number": str(valve_id + 1)}
+        else:
+            self._attr_name = None
         self._attr_reports_position = False
         self._attr_supported_features = (
             ValveEntityFeature.OPEN | ValveEntityFeature.CLOSE
