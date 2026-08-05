@@ -93,8 +93,42 @@ a one-off duration from the dashboard without writing a custom card.
 
 [![Open your Home Assistant instance and show the blueprint import dialog with a specific blueprint pre-filled.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2Fcloudless-garden%2Fha-gardena-smart-local-preview%2Fmain%2Fblueprints%2Fscript%2Fgardena_smart_local_preview%2Fopen_valve_with_duration.yaml)
 
-After importing, create a script from the blueprint, pick the valve, and add
-the resulting script entity to your dashboard.
+After importing, create a script from the blueprint and pick the valve.
+
+#### Showing the valve's real state on the card
+
+The script's own state always reads "off" — it finishes running the instant
+the open command is acknowledged, while the valve itself keeps running for
+the requested duration on the gateway's own timer, independently of the
+script. So a card built directly around the script entity won't reflect
+whether water is actually flowing.
+
+Point a tile card at the **valve entity** for its state, tap to open the
+script's duration form, and add a `valve-open-close` tile feature for a
+direct, native stop control:
+
+```yaml
+type: tile
+entity: valve.your_valve_entity_id # the valve
+tap_action:
+  action: more-info
+  entity: script.your_open_valve_script # the script created from this blueprint
+icon_tap_action:
+  action: more-info
+  entity: script.your_open_valve_script # same as tap_action, above
+features_position: bottom
+features:
+  - type: valve-open-close
+```
+
+Replace `valve.your_valve_entity_id` and `script.your_open_valve_script` with
+your actual entity IDs — the script's entity ID depends on the name you gave
+it when creating it from the blueprint.
+
+Tapping the tile opens the script's own more-info dialog, which renders the
+Duration field as a form and runs the script on confirm — no custom
+open/close service calls needed. The `valve-open-close` feature adds real
+Open/Close buttons for the valve entity directly on the card face.
 
 ## Removal
 
