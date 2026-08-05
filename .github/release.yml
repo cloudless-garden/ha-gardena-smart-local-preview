@@ -7,12 +7,12 @@ changelog:
     - title: ⚠️ Breaking Changes
       labels:
         - breaking-change
-    - title: 🐛 Bug Fixes
-      labels:
-        - bug
     - title: ✨ Enhancements
       labels:
         - enhancement
+    - title: 🐛 Bug Fixes
+      labels:
+        - bug
     - title: 📚 Documentation
       labels:
         - documentation
