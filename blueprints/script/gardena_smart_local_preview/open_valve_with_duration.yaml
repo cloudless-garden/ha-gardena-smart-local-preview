@@ -37,4 +37,9 @@ sequence:
     target:
       entity_id: !input valve
     data:
-      duration: "{{ duration | default(omit) }}"
+      # duration | default(omit) alone only catches a truly missing value.
+      # Calling the script without the fields form (e.g. the dashboard
+      # row's play icon) passes duration as None instead of omitting it,
+      # so the second `true` argument tells Jinja to also treat that
+      # falsy value as missing.
+      duration: "{{ duration | default(omit, true) }}"
