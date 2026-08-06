@@ -166,6 +166,9 @@ If installed via HACS, you can also remove the integration files there: open HAC
 > [!NOTE]
 > The temperature sensor integrated into Water Control devices is intended solely for frost detection, not for precise real-time temperature tracking.
 
+> [!WARNING]
+> Installing a firmware update on a Gen1 device factory-resets its settings. Schedules and other configuration will be lost and need to be set up again afterwards. This does not affect Gen2 devices. The official GARDENA app writes the settings back to the device automatically after installing the update there, this integration does not, installing the update via the app avoids the loss.
+
 See [gardena-smart-local-api] for more details about the device types.
 
 [gardena-smart-local-api]: https://github.com/cloudless-garden/gardena-smart-local-api

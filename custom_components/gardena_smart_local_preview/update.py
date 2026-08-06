@@ -8,6 +8,7 @@ import logging
 from typing import Any
 
 from gardena_smart_local_api.devices.device import Device, FirmwareUpdateState
+from gardena_smart_local_api.devices.gen1 import Gen1Device
 from homeassistant.components.update import (
     UpdateDeviceClass,
     UpdateEntity,
@@ -77,6 +78,19 @@ class GardenaFirmwareUpdate(GardenaEntity, UpdateEntity):
     def installed_version(self) -> str | None:
         device = self.coordinator.data.get(self._device.id)
         return device.software_version if device else None
+
+    @property
+    def release_summary(self) -> str | None:
+        if isinstance(self._device, Gen1Device):
+            return (
+                "This Gen1 device factory-resets its settings during the "
+                "update. Schedules and other configuration will be lost and "
+                "need to be set up again afterwards. The official GARDENA "
+                "app writes the settings back to the device automatically "
+                "after installing the update there, this integration does "
+                "not."
+            )
+        return None
 
     @property
     def latest_version(self) -> str | None:
