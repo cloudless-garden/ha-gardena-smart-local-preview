@@ -18,8 +18,10 @@ from .const import DEFAULT_VALVE_DURATION_MINUTES
 from .coordinator import GardenaSmartLocalCoordinator
 from .entity import (
     GardenaEntity,
+    async_set_pump_duration_minutes,
     async_set_valve_duration_minutes,
     find_device_subentry_id,
+    get_pump_duration_minutes,
     get_valve_duration_minutes,
 )
 
@@ -79,6 +81,9 @@ async def async_setup_entry(
                 sid = find_device_subentry_id(entry, device.id)
                 entities_by_subentry_id.setdefault(sid, []).append(
                     GardenaPumpTurnOnPressure(coordinator, device)
+                )
+                entities_by_subentry_id.setdefault(sid, []).append(
+                    GardenaPumpDuration(coordinator, entry, device)
                 )
                 _LOGGER.info("Adding new pump number entity for device %s", device.id)
 
@@ -247,5 +252,49 @@ class GardenaValveDuration(GardenaEntity, NumberEntity):
             "Set valve duration for device %s valve_id=%s to %s minutes",
             self._device.id,
             self._valve_id,
+            minutes,
+        )
+
+
+class GardenaPumpDuration(GardenaEntity, NumberEntity):
+    _attr_native_min_value = 1
+    # Matches the official app's pump duration ceiling.
+    _attr_native_max_value = 90
+    _attr_native_step = 1
+    _attr_native_unit_of_measurement = UnitOfTime.MINUTES
+    _attr_mode = NumberMode.BOX
+    _attr_entity_category = EntityCategory.CONFIG
+
+    def __init__(
+        self,
+        coordinator: GardenaSmartLocalCoordinator,
+        entry: ConfigEntry,
+        device: Pump,
+    ) -> None:
+        super().__init__(coordinator, device)
+        self._entry = entry
+        self._attr_unique_id = f"{device.id}_pump_duration"
+        self._attr_name = "Default Pump Duration"
+        self._attr_icon = "mdi:timer-outline"
+
+    # Stored in the config subentry rather than read from the device, so it
+    # stays settable while the gateway or the device itself is unreachable.
+    @property
+    def available(self) -> bool:
+        return True
+
+    @property
+    def native_value(self) -> float | None:
+        return get_pump_duration_minutes(self._entry, self._device.id)
+
+    async def async_set_native_value(self, value: float) -> None:
+        minutes = int(value)
+        async_set_pump_duration_minutes(
+            self.hass, self._entry, self._device.id, minutes
+        )
+        self.async_write_ha_state()
+        _LOGGER.info(
+            "Set pump duration for device %s to %s minutes",
+            self._device.id,
             minutes,
         )

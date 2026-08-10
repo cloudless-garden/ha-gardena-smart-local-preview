@@ -146,6 +146,16 @@
           "description": "Wie lange das Ventil geöffnet bleibt, in Sekunden (60-10800). Ohne Angabe wird die konfigurierte Dauer des Ventils verwendet."
         }
       }
+    },
+    "start_pump": {
+      "name": "Pumpe starten",
+      "description": "Startet eine Pumpe für eine feste Dauer, optional mit einer abweichenden Dauer nur für diesen Aufruf. Das Gerät stoppt automatisch, sobald diese Dauer abgelaufen ist.",
+      "fields": {
+        "duration": {
+          "name": "Dauer",
+          "description": "Wie lange die Pumpe läuft, in Sekunden (60-5400). Ohne Angabe wird die konfigurierte Dauer der Pumpe verwendet."
+        }
+      }
     }
   },
   "config": {

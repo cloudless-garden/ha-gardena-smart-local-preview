@@ -17,3 +17,19 @@ open_valve:
           max: 10800
           unit_of_measurement: s
           mode: box
+
+start_pump:
+  target:
+    entity:
+      integration: gardena_smart_local_preview
+      domain: switch
+  fields:
+    duration:
+      required: false
+      example: 900
+      selector:
+        number:
+          min: 60
+          max: 5400
+          unit_of_measurement: s
+          mode: box
