@@ -22,24 +22,23 @@ blueprint:
 fields:
   duration:
     name: Duration
-    description: How long to keep the valve open, in seconds.
+    description: How long to keep the valve open.
     required: false
-    example: 900
     selector:
-      number:
-        min: 60
-        max: 10800
-        unit_of_measurement: s
-        mode: box
+      duration:
+        enable_day: false
 
 sequence:
   - action: gardena_smart_local_preview.open_valve
     target:
       entity_id: !input valve
     data:
-      # duration | default(omit) alone only catches a truly missing value.
-      # Calling the script without the fields form (e.g. the dashboard
-      # row's play icon) passes duration as None instead of omitting it,
-      # so the second `true` argument tells Jinja to also treat that
-      # falsy value as missing.
-      duration: "{{ duration | default(omit, true) }}"
+      # Calling the script without the fields form (e.g. the dashboard row's
+      # play icon) passes duration as None instead of omitting it, so
+      # default(none, true) normalizes both cases to None first. The
+      # duration selector gives back an {hours, minutes, seconds} dict;
+      # the open_valve service itself wants a plain number of seconds.
+      duration: >-
+        {% set d = duration | default(none, true) %}{{ omit if d is none else
+        ((d.hours | default(0) | int) * 3600 + (d.minutes | default(0) | int) * 60 +
+        (d.seconds | default(0) | int)) }}
