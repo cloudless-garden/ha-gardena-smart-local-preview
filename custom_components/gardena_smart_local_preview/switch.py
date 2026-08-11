@@ -8,9 +8,11 @@ import logging
 from typing import Any
 
 from gardena_smart_local_api.devices import PowerAdapter, Pump
+from gardena_smart_local_api.devices.irrigation import PumpOperatingMode
 from homeassistant.components.switch import SwitchDeviceClass, SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .coordinator import GardenaSmartLocalCoordinator
@@ -107,12 +109,32 @@ class GardenaPumpSwitch(GardenaEntity, SwitchEntity):
             return None
         return device.is_running
 
+    def _raise_if_automatic(self) -> None:
+        # In automatic mode the device ignores manual start/stop writes and
+        # keeps deciding for itself based on outlet pressure (runs when
+        # below turn_on_pressure), so the switch would silently revert.
+        # Reject client-side instead of sending a command that's going to
+        # be dropped.
+        #
+        # The frontend still optimistically flips the toggle on tap and
+        # snaps back once this error lands (standard HA switch-tile
+        # behavior for any rejected service call) - a harmless visual
+        # flicker, not a bug. available=False would avoid the flicker but
+        # also hide the switch's real on/off state, which is worse.
+        if self._device.operating_mode == PumpOperatingMode.AUTOMATIC:
+            raise ServiceValidationError(
+                f"{self.entity_id} is in automatic mode, switch it to "
+                "scheduled mode first"
+            )
+
     async def async_turn_on(self, **kwargs: Any) -> None:
+        self._raise_if_automatic()
         await self._send_confirmed_command(
             self._device.build_start_obj(DEFAULT_ON_DURATION_SECONDS)
         )
         _LOGGER.info("Turning on pump %s", self._device.id)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
+        self._raise_if_automatic()
         await self._send_confirmed_command(self._device.build_stop_obj())
         _LOGGER.info("Turning off pump %s", self._device.id)
