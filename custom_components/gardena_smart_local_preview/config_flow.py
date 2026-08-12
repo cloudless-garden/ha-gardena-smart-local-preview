@@ -15,7 +15,8 @@ from homeassistant.config_entries import (
     SubentryFlowResult,
 )
 from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_PORT
-from homeassistant.core import callback
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.util.ssl import get_default_no_verify_context
@@ -52,6 +53,7 @@ class GardenaSmartLocalConfigFlow(ConfigFlow, domain=DOMAIN):
             self._async_abort_entries_match({CONF_HOST: user_input[CONF_HOST]})
 
             error = await _async_try_connect(
+                self.hass,
                 user_input[CONF_HOST],
                 user_input[CONF_PORT],
                 user_input[CONF_PASSWORD],
@@ -102,6 +104,7 @@ class GardenaSmartLocalConfigFlow(ConfigFlow, domain=DOMAIN):
 
         if user_input is not None:
             error = await _async_try_connect(
+                self.hass,
                 user_input[CONF_HOST],
                 user_input[CONF_PORT],
                 user_input.get(CONF_PASSWORD, ""),
@@ -137,6 +140,7 @@ class GardenaSmartLocalConfigFlow(ConfigFlow, domain=DOMAIN):
 
         if user_input is not None:
             error = await _async_try_connect(
+                self.hass,
                 user_input[CONF_HOST],
                 user_input[CONF_PORT],
                 user_input.get(CONF_PASSWORD, ""),
@@ -168,21 +172,22 @@ class GardenaSmartLocalConfigFlow(ConfigFlow, domain=DOMAIN):
         return self.async_create_entry(title="GARDENA smart local", data=import_data)
 
 
-async def _async_try_connect(host: str, port: int, password: str) -> str | None:
+async def _async_try_connect(
+    hass: HomeAssistant, host: str, port: int, password: str
+) -> str | None:
     ssl_context = get_default_no_verify_context()
 
     auth_b64 = base64.b64encode(f"_:{password}".encode()).decode("ascii")
 
     try:
-        async with (
-            aiohttp.ClientSession() as session,
-            session.ws_connect(
-                URL.build(scheme="wss", host=host, port=port),
-                ssl=ssl_context,
-                headers={"Authorization": f"Basic {auth_b64}"},
-                timeout=aiohttp.ClientTimeout(total=10),
-            ) as ws,
-        ):
+        session = async_get_clientsession(hass)
+        async with session.ws_connect(
+            URL.build(scheme="wss", host=host, port=port),
+            ssl=ssl_context,
+            headers={"Authorization": f"Basic {auth_b64}"},
+            # ty doesn't resolve aiohttp's legacy attr.ib()-based __init__.
+            timeout=aiohttp.ClientWSTimeout(ws_receive=10),  # ty: ignore[unknown-argument]
+        ) as ws:
             await ws.close()
     except aiohttp.WSServerHandshakeError as err:
         if err.status == 401:
