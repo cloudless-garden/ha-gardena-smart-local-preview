@@ -25,6 +25,7 @@ from gardena_smart_local_api.sgtin96 import SGTIN96Info
 from gardena_smart_local_api.utils import deep_merge_dict
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util.ssl import get_default_no_verify_context
 from yarl import URL
@@ -132,15 +133,13 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
             consumer_task = None
             try:
                 _LOGGER.debug("Connecting to GARDENA smart Gateway at %s", self.uri)
-                async with (
-                    aiohttp.ClientSession() as session,
-                    session.ws_connect(
-                        self.uri,
-                        ssl=self._ssl_context,
-                        heartbeat=30,
-                        headers={"Authorization": f"Basic {self.auth_b64}"},
-                    ) as ws,
-                ):
+                session = async_get_clientsession(self.hass)
+                async with session.ws_connect(
+                    self.uri,
+                    ssl=self._ssl_context,
+                    heartbeat=30,
+                    headers={"Authorization": f"Basic {self.auth_b64}"},
+                ) as ws:
                     self._ws = ws
                     _LOGGER.info("Connected to GARDENA smart Gateway at %s", self.uri)
 
