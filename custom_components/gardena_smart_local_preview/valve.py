@@ -5,10 +5,11 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, Protocol, cast
 
 import voluptuous as vol
 from gardena_smart_local_api.devices import Device
+from gardena_smart_local_api.messages import EgressMessageList
 from homeassistant.components.valve import ValveEntity, ValveEntityFeature
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -27,6 +28,16 @@ _LOGGER = logging.getLogger(__name__)
 # Actions send commands to the gateway's local websocket — cap at 1 so HA
 # serializes them instead of firing concurrent commands at the same connection
 PARALLEL_UPDATES = 1
+
+
+class _ValveCapableDevice(Protocol):
+    valve_ids: list[int]
+
+    def build_open_valve_obj(
+        self, valve_id: int = 0, duration_seconds: int = 0
+    ) -> EgressMessageList: ...
+
+    def build_close_valve_obj(self, valve_id: int = 0) -> EgressMessageList: ...
 
 
 async def async_setup_entry(
@@ -94,7 +105,7 @@ class GardenaValve(GardenaEntity, ValveEntity):
         self._entry = entry
         self._valve_id = valve_id
         self._attr_unique_id = f"{device.id}_valve_{valve_id}"
-        if len(device.valve_ids) > 1:
+        if len(cast(_ValveCapableDevice, device).valve_ids) > 1:
             self._attr_translation_key = "valve"
             self._attr_translation_placeholders = {"number": str(valve_id + 1)}
         else:
@@ -131,7 +142,9 @@ class GardenaValve(GardenaEntity, ValveEntity):
             )
             duration = minutes * 60
         await self._send_confirmed_command(
-            self._device.build_open_valve_obj(self._valve_id, duration)
+            cast(_ValveCapableDevice, self._device).build_open_valve_obj(
+                self._valve_id, duration
+            )
         )
         _LOGGER.info(
             "Opening valve %s valve_id=%s duration=%s seconds",
@@ -142,6 +155,8 @@ class GardenaValve(GardenaEntity, ValveEntity):
 
     async def async_close_valve(self, **kwargs: Any) -> None:
         await self._send_confirmed_command(
-            self._device.build_close_valve_obj(self._valve_id)
+            cast(_ValveCapableDevice, self._device).build_close_valve_obj(
+                self._valve_id
+            )
         )
         _LOGGER.info("Closing valve %s valve_id=%s", self._device.id, self._valve_id)

@@ -1,0 +1,173 @@
+# SPDX-FileCopyrightText: 2026 GARDENA GmbH
+#
+# SPDX-License-Identifier: Apache-2.0
+
+"""Tests for the GARDENA smart local number entities."""
+
+from __future__ import annotations
+
+from unittest.mock import AsyncMock
+
+from gardena_smart_local_api.devices import Gen1WaterControl, PowerAdapter, Pump
+
+from custom_components.gardena_smart_local_preview import number
+
+
+async def test_setup_adds_button_config_time_for_water_control(
+    coordinator, entry, setup_platform, spec_device, sync_devices
+) -> None:
+    async_add_entities = await setup_platform(number, entry)
+    device = spec_device(Gen1WaterControl, device_id="device-1", valve_ids=[0])
+    coordinator._devices["device-1"] = device
+    sync_devices()
+
+    async_add_entities.assert_called_once()
+    (entities,), kwargs = async_add_entities.call_args
+    assert len(entities) == 2
+    assert isinstance(entities[0], number.GardenaButtonConfigTime)
+    assert isinstance(entities[1], number.GardenaValveDuration)
+    assert kwargs["config_subentry_id"] is None
+
+
+async def test_setup_adds_turn_on_pressure_for_pump(
+    coordinator, entry, setup_platform, spec_device, sync_devices
+) -> None:
+    async_add_entities = await setup_platform(number, entry)
+    device = spec_device(Pump, device_id="device-1")
+    coordinator._devices["device-1"] = device
+    sync_devices()
+
+    async_add_entities.assert_called_once()
+    (entities,), _ = async_add_entities.call_args
+    assert len(entities) == 1
+    assert isinstance(entities[0], number.GardenaPumpTurnOnPressure)
+
+
+async def test_setup_skips_non_matching_device(
+    coordinator, entry, setup_platform, spec_device, sync_devices
+) -> None:
+    async_add_entities = await setup_platform(number, entry)
+    device = spec_device(PowerAdapter, device_id="device-1")
+    coordinator._devices["device-1"] = device
+    sync_devices()
+
+    async_add_entities.assert_not_called()
+
+
+async def test_setup_noop_when_coordinator_data_empty(
+    coordinator, entry, setup_platform, sync_devices
+) -> None:
+    async_add_entities = await setup_platform(number, entry)
+    sync_devices()
+    async_add_entities.assert_not_called()
+
+
+async def test_setup_dedups_on_repeated_firing(
+    coordinator, entry, setup_platform, spec_device, sync_devices
+) -> None:
+    async_add_entities = await setup_platform(number, entry)
+    device = spec_device(Gen1WaterControl, device_id="device-1", valve_ids=[0])
+    coordinator._devices["device-1"] = device
+
+    sync_devices()
+    sync_devices()
+
+    async_add_entities.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# GardenaButtonConfigTime
+# ---------------------------------------------------------------------------
+
+
+def test_button_config_time_native_value_converts_seconds_to_minutes(
+    coordinator, spec_device, sync_devices
+) -> None:
+    device = spec_device(Gen1WaterControl, device_id="device-1", valve_ids=[0])
+    device.get_button_config_time.return_value = 120
+    coordinator._devices["device-1"] = device
+    sync_devices()
+    entity = number.GardenaButtonConfigTime(coordinator, device, valve_id=0)
+    assert entity.native_value == 2
+    device.get_button_config_time.assert_called_with(0)
+
+
+def test_button_config_time_native_value_none_when_raw_none(
+    coordinator, spec_device, sync_devices
+) -> None:
+    device = spec_device(Gen1WaterControl, device_id="device-1", valve_ids=[0])
+    device.get_button_config_time.return_value = None
+    coordinator._devices["device-1"] = device
+    sync_devices()
+    entity = number.GardenaButtonConfigTime(coordinator, device, valve_id=0)
+    assert entity.native_value is None
+
+
+def test_button_config_time_native_value_none_when_device_missing(
+    coordinator, spec_device, sync_devices
+) -> None:
+    device = spec_device(Gen1WaterControl, device_id="device-1", valve_ids=[0])
+    device.get_button_config_time.return_value = 120
+    sync_devices()
+    entity = number.GardenaButtonConfigTime(coordinator, device, valve_id=0)
+    assert entity.native_value is None
+
+
+async def test_button_config_time_set_native_value_converts_minutes_to_seconds(
+    coordinator, spec_device
+) -> None:
+    device = spec_device(Gen1WaterControl, device_id="device-1", valve_ids=[0])
+    coordinator.send_request = AsyncMock()
+    entity = number.GardenaButtonConfigTime(coordinator, device, valve_id=0)
+
+    await entity.async_set_native_value(5)
+
+    device.build_set_button_config_time_obj.assert_called_once_with(300, 0)
+    coordinator.send_request.assert_awaited_once_with(
+        "device-1",
+        device.build_set_button_config_time_obj.return_value,
+        wait_for_response_sec=10,
+    )
+
+
+# ---------------------------------------------------------------------------
+# GardenaPumpTurnOnPressure
+# ---------------------------------------------------------------------------
+
+
+def test_turn_on_pressure_native_value(coordinator, spec_device, sync_devices) -> None:
+    device = spec_device(Pump, device_id="device-1", turn_on_pressure=2.5)
+    coordinator._devices["device-1"] = device
+    sync_devices()
+    entity = number.GardenaPumpTurnOnPressure(coordinator, device)
+    assert entity.native_value == 2.5
+
+
+def test_turn_on_pressure_native_value_none_when_device_missing(
+    coordinator, spec_device, sync_devices
+) -> None:
+    device = spec_device(Pump, device_id="device-1", turn_on_pressure=2.5)
+    sync_devices()
+    entity = number.GardenaPumpTurnOnPressure(coordinator, device)
+    assert entity.native_value is None
+
+
+async def test_turn_on_pressure_set_native_value(coordinator, spec_device) -> None:
+    device = spec_device(Pump, device_id="device-1")
+    coordinator.send_request = AsyncMock()
+    entity = number.GardenaPumpTurnOnPressure(coordinator, device)
+
+    await entity.async_set_native_value(3.2)
+
+    device.build_set_turn_on_pressure_obj.assert_called_once_with(3.2)
+    coordinator.send_request.assert_awaited_once_with(
+        "device-1",
+        device.build_set_turn_on_pressure_obj.return_value,
+        wait_for_response_sec=10,
+    )
+
+
+# Dripping alert moved to select.py (GardenaPumpDrippingAlert as a select,
+# not a number) - see test_select.py. No equivalent coverage was added there
+# yet when this test suite was rebased; the old number-entity tests for it
+# were removed here since the class no longer exists in number.py.

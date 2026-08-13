@@ -5,8 +5,9 @@
 from __future__ import annotations
 
 import logging
+from typing import cast
 
-from gardena_smart_local_api.devices import Pump
+from gardena_smart_local_api.devices import Gen1WaterControl, Pump
 from gardena_smart_local_api.devices.device import Device
 from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.config_entries import ConfigEntry
@@ -150,11 +151,13 @@ class GardenaButtonConfigTime(GardenaEntity, NumberEntity):
     async def async_set_native_value(self, value: float) -> None:
         seconds = int(value) * 60
         if hasattr(self._device, "get_button_config_time"):
-            request = self._device.build_set_button_config_time_obj(
-                seconds, self._valve_id
-            )
+            request = cast(
+                Gen1WaterControl, self._device
+            ).build_set_button_config_time_obj(seconds, self._valve_id)
         else:
-            request = self._device.build_set_button_config_time_obj(seconds)
+            request = cast(
+                Gen1WaterControl, self._device
+            ).build_set_button_config_time_obj(seconds)
         await self._send_confirmed_command(request)
         _LOGGER.info(
             "Set button config time for device %s, valve %s to %s minutes",
@@ -190,7 +193,7 @@ class GardenaPumpTurnOnPressure(GardenaEntity, NumberEntity):
 
     async def async_set_native_value(self, value: float) -> None:
         await self._send_confirmed_command(
-            self._device.build_set_turn_on_pressure_obj(value)
+            cast(Pump, self._device).build_set_turn_on_pressure_obj(value)
         )
         _LOGGER.info(
             "Set turn-on pressure for device %s to %s bar",

@@ -7,8 +7,15 @@
 from __future__ import annotations
 
 import logging
+from typing import cast
 
-from gardena_smart_local_api.devices import Device, MowerState
+from gardena_smart_local_api.devices import (
+    Device,
+    Gen1Mower1,
+    Gen1Mower2,
+    Gen2Mower,
+    MowerState,
+)
 from homeassistant.components.lawn_mower import (
     LawnMowerActivity,
     LawnMowerEntity,
@@ -26,6 +33,8 @@ _LOGGER = logging.getLogger(__name__)
 # Actions send commands to the gateway's local websocket — cap at 1 so HA
 # serializes them instead of firing concurrent commands at the same connection
 PARALLEL_UPDATES = 1
+
+_Mower = Gen1Mower1 | Gen1Mower2 | Gen2Mower
 
 
 async def async_setup_entry(
@@ -80,7 +89,7 @@ class GardenaMower(GardenaEntity, LawnMowerEntity):
         device = self.coordinator.data.get(self._device.id)
         if device is None:
             return None
-        mower_state = device.state
+        mower_state = cast(_Mower, device).state
         _LOGGER.debug("Mower status: %s", mower_state)
         match mower_state:
             case MowerState.CHARGING | MowerState.PARKED:
@@ -103,17 +112,21 @@ class GardenaMower(GardenaEntity, LawnMowerEntity):
 
     async def async_start_mowing(self) -> None:
         await self._send_confirmed_command(
-            self._device.build_start_mowing_obj(28800)  # 8 hours
+            cast(_Mower, self._device).build_start_mowing_obj(28800)  # 8 hours
         )
         _LOGGER.info("Start mowing with %s", self._device.id)
 
     async def async_dock(self) -> None:
-        await self._send_confirmed_command(self._device.build_stop_mowing_obj())
+        await self._send_confirmed_command(
+            cast(_Mower, self._device).build_stop_mowing_obj()
+        )
         _LOGGER.info("Stop mowing with %s", self._device.id)
 
     async def async_pause(self) -> None:
         if hasattr(self._device, "build_pause_mowing_obj"):
-            await self._send_confirmed_command(self._device.build_pause_mowing_obj())
+            await self._send_confirmed_command(
+                cast(Gen2Mower, self._device).build_pause_mowing_obj()
+            )
             _LOGGER.info("Pause mowing with %s", self._device.id)
         else:
             _LOGGER.warning("Pause not supported for device %s", self._device.id)

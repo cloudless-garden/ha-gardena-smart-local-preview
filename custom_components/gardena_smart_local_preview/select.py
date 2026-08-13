@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import logging
-from typing import ClassVar
+from typing import ClassVar, cast
 
 from gardena_smart_local_api.devices import Pump
 from gardena_smart_local_api.devices.irrigation import (
@@ -99,7 +99,7 @@ class GardenaPumpOperatingModeSelect(GardenaEntity, SelectEntity):
     async def async_select_option(self, option: str) -> None:
         mode = _OPTION_TO_MODE[option]
         await self._send_confirmed_command(
-            self._device.build_set_operating_mode_obj(mode)
+            cast(Pump, self._device).build_set_operating_mode_obj(mode)
         )
         _LOGGER.info("Set operating mode for device %s to %s", self._device.id, option)
 
