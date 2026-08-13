@@ -1969,7 +1969,7 @@ wheels = [
 
 [[package]]
 name = "gardena-smart-local-api"
-version = "0.1.1"
+version = "0.1.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiofile" },
@@ -1979,9 +1979,9 @@ dependencies = [
     { name = "pyyaml", version = "6.0.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.13.2'" },
     { name = "pyyaml", version = "6.0.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.13.2'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/02/62/f6e2dd44bf3bf8d8da7ebd01de2459b27ef9be1845b5e42b1ddfde5316eb/gardena_smart_local_api-0.1.1.tar.gz", hash = "sha256:d2432ad1ad2793d67268d0762a549682414c618c3a6d204b2fb1cdd7be7e80da", size = 109831, upload-time = "2026-07-30T21:04:35.729Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/8d/14/2e92083f7ca9241219e2fee5755d07c3b1001e30c1755677f285b04ed8b2/gardena_smart_local_api-0.1.3.tar.gz", hash = "sha256:91d372e63f6ff04018d32616100e0c3cc1cb52425bb8c18b0fda636e7de05ebe", size = 114919, upload-time = "2026-08-13T21:22:43.321Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/9c/3e/c034b8951121f2dcf89950114c0b6506d66e02f63f7872fc110e54fff946/gardena_smart_local_api-0.1.1-py3-none-any.whl", hash = "sha256:5a753cdc0b8502d20ca9e153ea51a9fb57c9f734dab7ff0b20c7e8d85529478c", size = 79698, upload-time = "2026-07-30T21:04:34.551Z" },
+    { url = "https://files.pythonhosted.org/packages/e7/71/002dd7ca8b20319d319bf78bdf8fb8bb1d3638c47575d0ff3fa8d68711d9/gardena_smart_local_api-0.1.3-py3-none-any.whl", hash = "sha256:59027be499740b9087a38dd5d1a2adc86895353f8a031c1cb0d478fcf9222b7a", size = 82211, upload-time = "2026-08-13T21:22:42.052Z" },
 ]
 
 [[package]]
@@ -2101,7 +2101,7 @@ dev = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "gardena-smart-local-api", specifier = "==0.1.1" },
+    { name = "gardena-smart-local-api", specifier = "==0.1.3" },
     { name = "pytest-homeassistant-custom-component", specifier = ">=0.13" },
     { name = "reuse", specifier = ">=6.2.0" },
 ]
