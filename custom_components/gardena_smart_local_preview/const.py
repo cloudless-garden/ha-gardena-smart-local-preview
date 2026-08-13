@@ -6,6 +6,9 @@ DOMAIN = "gardena_smart_local_preview"
 
 DEFAULT_PORT = 8443
 DEFAULT_VALVE_DURATION_MINUTES = 30
+DEFAULT_PUMP_DURATION_MINUTES = 30
 
 # Subentry data key holding {str(valve_id): minutes} for a device's valves
 CONF_VALVE_DURATIONS = "valve_durations"
+# Subentry data key holding a pump's default timed-start duration, in minutes
+CONF_PUMP_DURATION = "pump_duration"

@@ -7,14 +7,17 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+import voluptuous as vol
 from gardena_smart_local_api.devices import PowerAdapter, Pump
 from homeassistant.components.switch import SwitchDeviceClass, SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import entity_platform
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .coordinator import GardenaSmartLocalCoordinator
-from .entity import GardenaEntity, find_device_subentry_id
+from .entity import GardenaEntity, find_device_subentry_id, get_pump_duration_minutes
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -34,6 +37,18 @@ async def async_setup_entry(
     coordinator: GardenaSmartLocalCoordinator = entry.runtime_data
     known_devices: set[str] = set()
 
+    platform = entity_platform.async_get_current_platform()
+    platform.async_register_entity_service(
+        "start_pump",
+        {
+            # 1-90 minutes, matches the official app's pump duration limit
+            vol.Optional("duration"): vol.All(
+                vol.Coerce(int), vol.Range(min=60, max=5400)
+            )
+        },
+        "async_start_pump_for",
+    )
+
     def _add_new_devices() -> None:
         if not coordinator.data:
             return
@@ -51,7 +66,7 @@ async def async_setup_entry(
                 known_devices.add(device.id)
                 sid = find_device_subentry_id(entry, device.id)
                 entities_by_subentry_id.setdefault(sid, []).append(
-                    GardenaPumpSwitch(coordinator, device)
+                    GardenaPumpSwitch(coordinator, entry, device)
                 )
                 _LOGGER.info("Adding new pump switch entity for device %s", device.id)
         for sid, entities in entities_by_subentry_id.items():
@@ -85,6 +100,14 @@ class GardenaPowerSwitch(GardenaEntity, SwitchEntity):
         )
         _LOGGER.info("Turning on switch %s", self._device.id)
 
+    async def async_start_pump_for(self, duration: int | None = None) -> None:
+        # start_pump targets domain=switch, which also matches this entity,
+        # a plain power outlet has no timed-start concept to hand off to.
+        raise HomeAssistantError(
+            f"start_pump is not supported for {self.entity_id}, it's a power "
+            "outlet, not a pump"
+        )
+
     async def async_turn_off(self, **kwargs: Any) -> None:
         await self._send_confirmed_command(self._device.build_disable_output_obj())
         _LOGGER.info("Turning off switch %s", self._device.id)
@@ -94,9 +117,11 @@ class GardenaPumpSwitch(GardenaEntity, SwitchEntity):
     def __init__(
         self,
         coordinator: GardenaSmartLocalCoordinator,
+        entry: ConfigEntry,
         device: Pump,
     ) -> None:
         super().__init__(coordinator, device)
+        self._entry = entry
         self._attr_unique_id = f"{device.id}_switch"
         self._attr_name = None
 
@@ -112,6 +137,22 @@ class GardenaPumpSwitch(GardenaEntity, SwitchEntity):
             self._device.build_start_obj(DEFAULT_ON_DURATION_SECONDS)
         )
         _LOGGER.info("Turning on pump %s", self._device.id)
+
+    async def async_start_pump_for(self, duration: int | None = None) -> None:
+        if duration is None:
+            minutes = get_pump_duration_minutes(self._entry, self._device.id)
+            duration = minutes * 60
+        await self._send_confirmed_command(self._device.build_start_obj(duration))
+        _LOGGER.info("Starting pump %s duration=%s seconds", self._device.id, duration)
+
+    async def async_turn_on_for(self, duration: int | None = None) -> None:
+        # enable_output (added on the power outlet's own branch) targets
+        # domain=switch, which also matches this entity, a pump isn't a
+        # plain power outlet, use start_pump instead.
+        raise HomeAssistantError(
+            f"enable_output is not supported for {self.entity_id}, it's a pump, "
+            "use the start_pump action instead"
+        )
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         await self._send_confirmed_command(self._device.build_stop_obj())
