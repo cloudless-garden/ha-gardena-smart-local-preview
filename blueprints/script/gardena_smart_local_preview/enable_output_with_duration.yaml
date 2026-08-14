@@ -1,0 +1,45 @@
+# SPDX-FileCopyrightText: 2026 GARDENA GmbH
+#
+# SPDX-License-Identifier: Apache-2.0
+
+blueprint:
+  name: Enable output of GARDENA smart Power Adapter (with duration)
+  description: >-
+    Enables the output of a GARDENA smart Power Adapter, optionally overriding its
+    configured duration for this run only.
+  domain: script
+  source_url: https://github.com/cloudless-garden/ha-gardena-smart-local-preview/blob/main/blueprints/script/gardena_smart_local_preview/enable_output_with_duration.yaml
+  input:
+    socket:
+      name: Power outlet
+      description: The power outlet to turn on.
+      selector:
+        entity:
+          filter:
+            integration: gardena_smart_local_preview
+            domain: switch
+            device_class: outlet
+
+fields:
+  duration:
+    name: Duration
+    description: How long to keep the output enabled.
+    required: false
+    selector:
+      duration:
+        enable_day: false
+
+sequence:
+  - action: gardena_smart_local_preview.enable_output
+    target:
+      entity_id: !input socket
+    data:
+      # Calling the script without the fields form (e.g. the dashboard row's
+      # play icon) passes duration as None instead of omitting it, so
+      # default(none, true) normalizes both cases to None first. The
+      # duration selector gives back an {hours, minutes, seconds} dict;
+      # the enable_output service itself wants a plain number of seconds.
+      duration: >-
+        {% set d = duration | default(none, true) %}{{ omit if d is none else
+        ((d.hours | default(0) | int) * 3600 + (d.minutes | default(0) | int) * 60 +
+        (d.seconds | default(0) | int)) }}

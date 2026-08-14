@@ -12,7 +12,13 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import CONF_VALVE_DURATIONS, DEFAULT_VALVE_DURATION_MINUTES, DOMAIN
+from .const import (
+    CONF_POWER_DURATION,
+    CONF_VALVE_DURATIONS,
+    DEFAULT_POWER_DURATION_MINUTES,
+    DEFAULT_VALVE_DURATION_MINUTES,
+    DOMAIN,
+)
 from .coordinator import COMMAND_REPLY_TIMEOUT, GardenaSmartLocalCoordinator
 
 
@@ -59,6 +65,34 @@ def async_set_valve_duration_minutes(
     durations[str(valve_id)] = minutes
     hass.config_entries.async_update_subentry(
         entry, subentry, data={**subentry.data, CONF_VALVE_DURATIONS: durations}
+    )
+
+
+def get_power_duration_minutes(entry: ConfigEntry, device_id: str) -> int:
+    # Falls back to the default for devices without a subentry, and for
+    # outlets the user has never configured.
+    subentry_id = find_device_subentry_id(entry, device_id)
+    if subentry_id is None:
+        return DEFAULT_POWER_DURATION_MINUTES
+    minutes = entry.subentries[subentry_id].data.get(CONF_POWER_DURATION)
+    if not isinstance(minutes, int):
+        return DEFAULT_POWER_DURATION_MINUTES
+    return minutes
+
+
+@callback
+def async_set_power_duration_minutes(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    device_id: str,
+    minutes: int,
+) -> None:
+    subentry_id = find_device_subentry_id(entry, device_id)
+    if subentry_id is None:
+        return
+    subentry = entry.subentries[subentry_id]
+    hass.config_entries.async_update_subentry(
+        entry, subentry, data={**subentry.data, CONF_POWER_DURATION: minutes}
     )
 
 
