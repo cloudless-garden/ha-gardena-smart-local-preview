@@ -146,6 +146,16 @@
           "description": "How long to keep the valve open, in seconds (60-10800). Defaults to the valve's configured duration if omitted."
         }
       }
+    },
+    "enable_output": {
+      "name": "Enable output",
+      "description": "Enables the output of a power outlet for a fixed duration, optionally overriding its configured duration for this call only. The output is disabled automatically once that duration has elapsed.",
+      "fields": {
+        "duration": {
+          "name": "Duration",
+          "description": "How long to keep the outlet on, in seconds (minimum 1). Defaults to the outlet's configured duration if omitted."
+        }
+      }
     }
   },
   "config": {

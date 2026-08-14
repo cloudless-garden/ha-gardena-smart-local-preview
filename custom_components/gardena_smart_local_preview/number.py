@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import logging
 
-from gardena_smart_local_api.devices import Pump
+from gardena_smart_local_api.devices import PowerAdapter, Pump
 from gardena_smart_local_api.devices.device import Device
 from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.config_entries import ConfigEntry
@@ -18,8 +18,10 @@ from .const import DEFAULT_VALVE_DURATION_MINUTES
 from .coordinator import GardenaSmartLocalCoordinator
 from .entity import (
     GardenaEntity,
+    async_set_power_duration_minutes,
     async_set_valve_duration_minutes,
     find_device_subentry_id,
+    get_power_duration_minutes,
     get_valve_duration_minutes,
 )
 
@@ -81,6 +83,15 @@ async def async_setup_entry(
                     GardenaPumpTurnOnPressure(coordinator, device)
                 )
                 _LOGGER.info("Adding new pump number entity for device %s", device.id)
+            elif isinstance(device, PowerAdapter) and device.id not in known_devices:
+                known_devices.add(device.id)
+                sid = find_device_subentry_id(entry, device.id)
+                entities_by_subentry_id.setdefault(sid, []).append(
+                    GardenaPowerDuration(coordinator, entry, device)
+                )
+                _LOGGER.info(
+                    "Adding new power outlet duration entity for device %s", device.id
+                )
 
             new_valve_ids: list[int] = []
             for valve_id in getattr(device, "valve_ids", []):
@@ -247,5 +258,48 @@ class GardenaValveDuration(GardenaEntity, NumberEntity):
             "Set valve duration for device %s valve_id=%s to %s minutes",
             self._device.id,
             self._valve_id,
+            minutes,
+        )
+
+
+class GardenaPowerDuration(GardenaEntity, NumberEntity):
+    _attr_native_min_value = 1
+    _attr_native_max_value = 180
+    _attr_native_step = 1
+    _attr_native_unit_of_measurement = UnitOfTime.MINUTES
+    _attr_mode = NumberMode.BOX
+    _attr_entity_category = EntityCategory.CONFIG
+
+    def __init__(
+        self,
+        coordinator: GardenaSmartLocalCoordinator,
+        entry: ConfigEntry,
+        device: PowerAdapter,
+    ) -> None:
+        super().__init__(coordinator, device)
+        self._entry = entry
+        self._attr_unique_id = f"{device.id}_power_duration"
+        self._attr_name = "Default On Duration"
+        self._attr_icon = "mdi:timer-outline"
+
+    # Stored in the config subentry rather than read from the device, so it
+    # stays settable while the gateway or the device itself is unreachable.
+    @property
+    def available(self) -> bool:
+        return True
+
+    @property
+    def native_value(self) -> float | None:
+        return get_power_duration_minutes(self._entry, self._device.id)
+
+    async def async_set_native_value(self, value: float) -> None:
+        minutes = int(value)
+        async_set_power_duration_minutes(
+            self.hass, self._entry, self._device.id, minutes
+        )
+        self.async_write_ha_state()
+        _LOGGER.info(
+            "Set power outlet duration for device %s to %s minutes",
+            self._device.id,
             minutes,
         )
