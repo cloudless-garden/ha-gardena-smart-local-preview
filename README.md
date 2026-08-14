@@ -130,6 +130,38 @@ Duration field as a form and runs the script on confirm — no custom
 open/close service calls needed. The `valve-open-close` feature adds real
 Open/Close buttons for the valve entity directly on the card face.
 
+### Power On (with duration)
+
+Same idea as the valve blueprint, for the `enable_output` action: it wraps the
+service in a script so its more-info dialog renders the `duration` field as
+a form, letting you pick a one-off on-time from the dashboard.
+
+[![Open your Home Assistant instance and show the blueprint import dialog with a specific blueprint pre-filled.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2Fcloudless-garden%2Fha-gardena-smart-local-preview%2Fmain%2Fblueprints%2Fscript%2Fgardena_smart_local_preview%2Fenable_output_with_duration.yaml)
+
+After importing, create a script from the blueprint and pick the power
+outlet.
+
+The same caveat as the valve applies: the script's own state always reads
+"off" the instant the command is acknowledged, not while the outlet is
+actually on. Point a tile card at the **outlet's switch entity** instead
+(it tracks the real on/off state, same as the valve entity), with `tap_action`
+set to open the script's more-info dialog for the duration form. Unlike the
+valve, no extra tile feature is used here: a plain tile pointed at the
+switch entity already lets you tap the icon to toggle it directly via
+`icon_tap_action`. The valve section's `valve-open-close` feature above is
+just an optional convenience for visible Open/Close buttons; switches don't
+need an equivalent since on/off is already the whole story:
+
+```yaml
+type: tile
+entity: switch.gardena_smart_power_adapter_xxxxxxxx # change to your power outlet
+tap_action:
+  action: more-info
+  entity: script.enable_output_of_gardena_smart_power_adapter_with_duration # change if necessary
+icon_tap_action:
+  action: toggle
+```
+
 ## Removal
 
 1. Go to **Settings → Devices & Services**

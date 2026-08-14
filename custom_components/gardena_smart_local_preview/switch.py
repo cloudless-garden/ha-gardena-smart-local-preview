@@ -7,14 +7,16 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+import voluptuous as vol
 from gardena_smart_local_api.devices import PowerAdapter, Pump
 from homeassistant.components.switch import SwitchDeviceClass, SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_platform
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .coordinator import GardenaSmartLocalCoordinator
-from .entity import GardenaEntity, find_device_subentry_id
+from .entity import GardenaEntity, find_device_subentry_id, get_power_duration_minutes
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -34,6 +36,18 @@ async def async_setup_entry(
     coordinator: GardenaSmartLocalCoordinator = entry.runtime_data
     known_devices: set[str] = set()
 
+    platform = entity_platform.async_get_current_platform()
+    platform.async_register_entity_service(
+        "enable_output",
+        {
+            # min=1 only to avoid colliding with 0, which build_enable_output_obj
+            # treats as "disable" rather than "on for 0 seconds". Unlike the
+            # valve/pump, the outlet has no app-defined upper duration limit.
+            vol.Optional("duration"): vol.All(vol.Coerce(int), vol.Range(min=1))
+        },
+        "async_turn_on_for",
+    )
+
     def _add_new_devices() -> None:
         if not coordinator.data:
             return
@@ -44,7 +58,7 @@ async def async_setup_entry(
                 known_devices.add(device.id)
                 sid = find_device_subentry_id(entry, device.id)
                 entities_by_subentry_id.setdefault(sid, []).append(
-                    GardenaPowerSwitch(coordinator, device)
+                    GardenaPowerSwitch(coordinator, entry, device)
                 )
                 _LOGGER.info("Adding new switch entity for device %s", device.id)
             elif isinstance(device, Pump) and device.id not in known_devices:
@@ -65,9 +79,11 @@ class GardenaPowerSwitch(GardenaEntity, SwitchEntity):
     def __init__(
         self,
         coordinator: GardenaSmartLocalCoordinator,
+        entry: ConfigEntry,
         device: PowerAdapter,
     ) -> None:
         super().__init__(coordinator, device)
+        self._entry = entry
         self._attr_unique_id = f"{device.id}_switch"
         self._attr_name = None
         self._attr_device_class = SwitchDeviceClass.OUTLET
@@ -84,6 +100,17 @@ class GardenaPowerSwitch(GardenaEntity, SwitchEntity):
             self._device.build_enable_output_obj(DEFAULT_ON_DURATION_SECONDS)
         )
         _LOGGER.info("Turning on switch %s", self._device.id)
+
+    async def async_turn_on_for(self, duration: int | None = None) -> None:
+        if duration is None:
+            minutes = get_power_duration_minutes(self._entry, self._device.id)
+            duration = minutes * 60
+        await self._send_confirmed_command(
+            self._device.build_enable_output_obj(duration)
+        )
+        _LOGGER.info(
+            "Turning on switch %s duration=%s seconds", self._device.id, duration
+        )
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         await self._send_confirmed_command(self._device.build_disable_output_obj())
