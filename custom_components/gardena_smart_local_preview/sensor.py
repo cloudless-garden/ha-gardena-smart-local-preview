@@ -316,6 +316,11 @@ class GardenaPumpFlowRateSensor(GardenaEntity, SensorEntity):
         device = self.coordinator.data.get(self._device.id)
         if not device:
             return None
+        # The gateway reports flow_rate=100 as a default/calibration value
+        # even when the pump is stopped. Only report a real flow when the
+        # pump is actually running.
+        if not device.is_running:
+            return 0.0
         rate = device.flow_rate
         return float(rate) if rate is not None else None
 
