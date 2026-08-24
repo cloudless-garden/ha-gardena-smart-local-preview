@@ -16,6 +16,13 @@ SPDX-License-Identifier = "Apache-2.0"
 
 [[annotations]]
 path = [
+  "custom_components/gardena_smart_local_preview/translations/fr.json",  
+]
+SPDX-FileCopyrightText = "2026 cy-bertrand"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = [
   "uv.lock",
 ]
 SPDX-FileCopyrightText = "NONE"

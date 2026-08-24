@@ -1,0 +1,202 @@
+{
+  "entity": {
+    "binary_sensor": {
+      "frost_warning": {
+        "name": "Alerte gel"
+      }
+    },
+    "button": {
+      "identify": {
+        "name": "Identifier"
+      },
+      "reset_resettable_flow": {
+        "name": "Réinitialiser le débit"
+      },
+      "reset_valve_errors": {
+        "name": "Réinitialiser les erreurs vanne"
+      },
+      "reset_temperature_min_max": {
+        "name": "Réinitialiser min/max température"
+      },
+      "clear_schedules": {
+        "name": "Effacer les programmations"
+      }
+    },
+    "number": {
+      "button_watering_duration": {
+        "name": "Durée d'arrosage bouton"
+      },
+      "button_watering_duration_numbered": {
+        "name": "Durée d'arrosage bouton {number}"
+      },
+      "turn_on_pressure": {
+        "name": "Pression d'enclenchement"
+      }
+    },
+    "select": {
+      "operating_mode": {
+        "name": "Mode de fonctionnement",
+        "state": {
+          "scheduled": "Programmé",
+          "automatic": "Automatique"
+        }
+      },
+      "dripping_alert": {
+        "name": "Alerte goutte-à-goutte",
+        "state": {
+          "standard": "Standard",
+          "sensitive": "Sensible",
+          "deactivated": "Désactivée"
+        }
+      }
+    },
+    "sensor": {
+      "temperature": {
+        "name": "Température"
+      },
+      "soil_moisture": {
+        "name": "Humidité du sol"
+      },
+      "light": {
+        "name": "Luminosité"
+      },
+      "battery": {
+        "name": "Batterie"
+      },
+      "rf_link_quality": {
+        "name": "Qualité liaison RF"
+      },
+      "outlet_pressure": {
+        "name": "Pression de sortie"
+      },
+      "outlet_temperature": {
+        "name": "Température de sortie"
+      },
+      "flow_rate": {
+        "name": "Débit"
+      },
+      "total_flow": {
+        "name": "Volume total"
+      },
+      "flow_since_reset": {
+        "name": "Volume depuis remise à zéro"
+      },
+      "pump_state": {
+        "name": "État de la pompe",
+        "state": {
+          "pump_is_just_starting": "Pompe en démarrage",
+          "water_in_the_pump_body": "Eau dans le corps de pompe",
+          "no_water_in_the_pump_body": "Pas d'eau dans le corps de pompe",
+          "flow_after_5s": "Débit après 5 secondes",
+          "no_flow_after_5s": "Pas de débit après 5 secondes"
+        }
+      },
+      "schedule_count": {
+        "name": "Nombre de programmations"
+      },
+      "firmware_update_state": {
+        "name": "État mise à jour firmware",
+        "state": {
+          "idle": "Inactif",
+          "downloading": "Téléchargement",
+          "downloaded": "Téléchargé",
+          "updating": "Mise à jour"
+        }
+      }
+    },
+    "valve": {
+      "valve": {
+        "name": "Vanne {number}"
+      }
+    }
+  },
+  "config_subentries": {
+    "device": {
+      "entry_type": "Appareil",
+      "initiate_flow": {
+        "user": "Inclure un appareil"
+      },
+      "step": {
+        "user": {
+          "title": "Inclure un appareil GARDENA",
+          "description": "Mettez votre appareil en mode inclusion (consultez le manuel de l'appareil en cas de doute), puis cliquez sur **Suivant**.\n\n**Note :** Les appareils inclus ici sont appairés localement avec la passerelle et n'apparaîtront pas dans l'application GARDENA. Si vous souhaitez continuer à utiliser l'application, incluez plutôt l'appareil via l'application GARDENA."
+        },
+        "select": {
+          "title": "Sélectionner un appareil à inclure",
+          "data": {
+            "device": "Appareil"
+          }
+        }
+      },
+      "abort": {
+        "no_devices_found": "Aucun appareil détecté. Assurez-vous que votre appareil est en mode inclusion et réessayez."
+      },
+      "error": {
+        "inclusion_failed": "Échec de l'inclusion de l'appareil. Veuillez réessayer."
+      }
+    }
+  },
+  "services": {
+    "open_valve": {
+      "name": "Ouvrir la vanne",
+      "description": "Ouvre une vanne, en remplaçant éventuellement sa durée configurée pour cet appel uniquement.",
+      "fields": {
+        "duration": {
+          "name": "Durée",
+          "description": "Durée d'ouverture de la vanne, en secondes (60-10800). Utilise la durée configurée de la vanne si omis."
+        }
+      }
+    }
+  },
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connexion à la passerelle GARDENA smart",
+        "data": {
+          "host": "Hôte",
+          "port": "Port",
+          "password": "Mot de passe"
+        },
+        "data_description": {
+          "host": "Adresse IP ou nom d'hôte de votre passerelle GARDENA smart",
+          "password": "Premier bloc de l'identifiant de la passerelle imprimé au dos de l'appareil (ex. `0824b95b` de `0824b95b-996c-48f7-83dc-…`)."
+        }
+      },
+      "discovery_confirm": {
+        "title": "Passerelle GARDENA smart détectée",
+        "description": "Voulez-vous configurer la passerelle GARDENA smart **{name}** ?",
+        "data": {
+          "host": "Hôte",
+          "port": "Port",
+          "password": "Mot de passe"
+        },
+        "data_description": {
+          "host": "Adresse IP ou nom d'hôte de votre passerelle GARDENA smart",
+          "password": "Premier bloc de l'identifiant de la passerelle imprimé au dos de l'appareil (ex. `0824b95b` de `0824b95b-996c-48f7-83dc-…`)."
+        }
+      },
+      "reconfigure": {
+        "title": "Mettre à jour les paramètres de la passerelle GARDENA smart",
+        "data": {
+          "host": "Hôte",
+          "port": "Port",
+          "password": "Mot de passe"
+        },
+        "data_description": {
+          "host": "Adresse IP ou nom d'hôte de votre passerelle GARDENA smart",
+          "password": "Premier bloc de l'identifiant de la passerelle imprimé au dos de l'appareil (ex. `0824b95b` de `0824b95b-996c-48f7-83dc-…`)."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Échec de connexion à la passerelle",
+      "invalid_auth": "Mot de passe invalide",
+      "unknown": "Erreur inattendue"
+    },
+    "abort": {
+      "already_configured": "La passerelle est déjà configurée",
+      "already_in_progress": "La passerelle semble avoir été détectée automatiquement, cliquez plutôt sur « Ajouter » dans l'intégration découverte",
+      "reconfigure_successful": "Paramètres de la passerelle GARDENA smart mis à jour"
+    }
+  }
+}
