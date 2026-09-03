@@ -14,8 +14,10 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
     CONF_POWER_DURATION,
+    CONF_PUMP_DURATION,
     CONF_VALVE_DURATIONS,
     DEFAULT_POWER_DURATION_MINUTES,
+    DEFAULT_PUMP_DURATION_MINUTES,
     DEFAULT_VALVE_DURATION_MINUTES,
     DOMAIN,
 )
@@ -93,6 +95,34 @@ def async_set_power_duration_minutes(
     subentry = entry.subentries[subentry_id]
     hass.config_entries.async_update_subentry(
         entry, subentry, data={**subentry.data, CONF_POWER_DURATION: minutes}
+    )
+
+
+def get_pump_duration_minutes(entry: ConfigEntry, device_id: str) -> int:
+    # Falls back to the default for devices without a subentry, and for pumps
+    # the user has never configured.
+    subentry_id = find_device_subentry_id(entry, device_id)
+    if subentry_id is None:
+        return DEFAULT_PUMP_DURATION_MINUTES
+    minutes = entry.subentries[subentry_id].data.get(CONF_PUMP_DURATION)
+    if not isinstance(minutes, int):
+        return DEFAULT_PUMP_DURATION_MINUTES
+    return minutes
+
+
+@callback
+def async_set_pump_duration_minutes(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    device_id: str,
+    minutes: int,
+) -> None:
+    subentry_id = find_device_subentry_id(entry, device_id)
+    if subentry_id is None:
+        return
+    subentry = entry.subentries[subentry_id]
+    hass.config_entries.async_update_subentry(
+        entry, subentry, data={**subentry.data, CONF_PUMP_DURATION: minutes}
     )
 
 
