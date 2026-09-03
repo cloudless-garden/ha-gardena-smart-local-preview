@@ -162,6 +162,30 @@ icon_tap_action:
   action: toggle
 ```
 
+### Start Pump (with duration)
+
+This works like the valve blueprint, for the `start_pump` action. It wraps
+the service in a script. The script's more-info dialog shows the `duration`
+field as a form, so you can pick a one-off run time from the dashboard.
+
+[![Open your Home Assistant instance and show the blueprint import dialog with a specific blueprint pre-filled.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2Fcloudless-garden%2Fha-gardena-smart-local-preview%2Fmain%2Fblueprints%2Fscript%2Fgardena_smart_local_preview%2Fstart_pump_with_duration.yaml)
+
+After importing, create a script from the blueprint and pick the pump.
+
+The pump is a switch, so the card setup matches the **Power On** section
+above: point a tile card at the pump's switch entity and set `tap_action`
+to open the script's more-info dialog.
+
+```yaml
+type: tile
+entity: switch.gardena_smart_automatic_home_garden_pump_xxxxxxxx # change to your pump
+tap_action:
+  action: more-info
+  entity: script.start_gardena_pump_with_duration # change if necessary
+icon_tap_action:
+  action: toggle
+```
+
 ## Removal
 
 1. Go to **Settings → Devices & Services**
