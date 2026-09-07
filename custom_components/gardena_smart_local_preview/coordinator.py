@@ -101,6 +101,10 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
         # outstanding command on that device arrives (see send_request).
         self._pending_reply_devices: dict[str, int] = {}
         self._unknown_device_discovery_handle: asyncio.TimerHandle | None = None
+        # Devices this integration is including right now. Their event burst
+        # must not trigger the unknown-device auto-discovery, which could
+        # create the subentry before the inclusion flow does.
+        self._including_device_ids: set[str] = set()
 
     async def _async_update_data(self) -> DeviceMap:
         return self._devices
@@ -292,8 +296,15 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
         _LOGGER.info("Discovery complete, found %d device(s)", len(self._devices))
 
     def _schedule_unknown_device_discovery(self, device_id: str) -> None:
+        if device_id in self._including_device_ids:
+            # We are including this device ourselves; async_include_device
+            # runs its own discovery. A parallel auto-discovery could create
+            # the subentry before the inclusion flow does.
+            return
         if self._unknown_device_discovery_handle is not None:
-            self._unknown_device_discovery_handle.cancel()
+            # A run is already scheduled; a burst of events for the same
+            # unknown device must not keep pushing it back indefinitely.
+            return
         _LOGGER.debug("Event for unknown device %s, scheduling re-discovery", device_id)
         self._unknown_device_discovery_handle = self.hass.loop.call_later(
             UNKNOWN_DEVICE_DISCOVERY_DEBOUNCE,
@@ -301,67 +312,69 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
         )
 
     async def _discover_unknown_devices(self) -> None:
-        self._unknown_device_discovery_handle = None
         _LOGGER.info("Re-running discovery to pick up newly included device(s)")
         try:
             await self._do_discovery()
         except Exception as err:  # noqa: BLE001 - best-effort, don't crash the coordinator
             _LOGGER.warning("Re-discovery for unknown device(s) failed: %s", err)
+        finally:
+            # Keep the marker set until discovery finishes; clearing it earlier
+            # lets a continued event burst schedule an overlapping run.
+            self._unknown_device_discovery_handle = None
 
     async def _handle_messages(self, messages: IngressMessageList) -> None:
-        try:
-            _LOGGER.debug("Handling %d message(s)", len(messages))
+        _LOGGER.debug("Handling %d message(s)", len(messages))
 
-            updated_device_ids: set[str] = set()
+        updated_device_ids: set[str] = set()
 
-            for msg in messages:
-                if isinstance(msg, Event):
-                    if msg.entity.path.object_name == "includable_device":
-                        await self._handle_includable_event(msg)
-                    elif msg.entity.device:
-                        device_id = msg.entity.device
-                        if (
-                            msg.op == "delete"
-                            and msg.entity.path.object_name is None
-                            and device_id in self._devices
-                        ):
-                            _LOGGER.info("Device %s removed (delete event)", device_id)
-                            self.async_drop_device(device_id)
-                        elif device_id in self._devices:
-                            _LOGGER.debug(
-                                "Updating device %s with event: %s",
-                                device_id,
-                                msg,
-                            )
-                            device = self._devices[device_id]
-                            was_online = device.is_online
-                            device.update_data(msg)
-                            if device.is_online != was_online:
-                                _LOGGER.info(
-                                    "Device %s connection status changed: online=%s",
-                                    device_id,
-                                    device.is_online,
-                                )
-                            updated_device_ids.add(device_id)
-                        elif msg.op != "delete":
-                            # A device we don't know yet, e.g. included via
-                            # the official app while we were already
-                            # connected. Not a delete op, so it's not just a
-                            # leftover event for an already-excluded device.
-                            self._schedule_unknown_device_discovery(device_id)
-                    else:
-                        _LOGGER.debug(
-                            "Event does not have device ID, ignoring: %s", msg
-                        )
+        for msg in messages:
+            if not isinstance(msg, Event):
+                continue
+            try:
+                await self._handle_event(msg, updated_device_ids)
+            except Exception as err:  # noqa: BLE001 - one bad event must not drop the rest of the frame
+                _LOGGER.warning("Error handling event %s: %s", msg, err)
 
-            # Devices with a command in flight are merged above but not
-            # broadcast yet — send_request() flushes them once the reply for
-            # that command confirms the settled state.
-            if updated_device_ids - self._pending_reply_devices.keys():
-                self.async_set_updated_data(self._devices)
+        # Devices with a command in flight are merged above but not
+        # broadcast yet — send_request() flushes them once the reply for
+        # that command confirms the settled state.
+        if updated_device_ids - self._pending_reply_devices.keys():
+            self.async_set_updated_data(self._devices)
 
-        except Exception as err:  # noqa: BLE001 - one bad message must not crash the coordinator
-            _LOGGER.warning("Error handling messages (may be non-critical): %s", err)
+    async def _handle_event(self, msg: Event, updated_device_ids: set[str]) -> None:
+        if msg.entity.path.object_name == "includable_device":
+            await self._handle_includable_event(msg)
+            return
+
+        device_id = msg.entity.device
+        if not device_id:
+            _LOGGER.debug("Event does not have device ID, ignoring: %s", msg)
+            return
+
+        if (
+            msg.op == "delete"
+            and msg.entity.path.object_name is None
+            and device_id in self._devices
+        ):
+            _LOGGER.info("Device %s removed (delete event)", device_id)
+            self.async_drop_device(device_id)
+        elif device_id in self._devices:
+            _LOGGER.debug("Updating device %s with event: %s", device_id, msg)
+            device = self._devices[device_id]
+            was_online = device.is_online
+            device.update_data(msg)
+            if device.is_online != was_online:
+                _LOGGER.info(
+                    "Device %s connection status changed: online=%s",
+                    device_id,
+                    device.is_online,
+                )
+            updated_device_ids.add(device_id)
+        elif msg.op != "delete":
+            # A device we don't know yet, e.g. included via the official app
+            # while we were already connected. Not a delete op, so it's not
+            # just a leftover event for an already-excluded device.
+            self._schedule_unknown_device_discovery(device_id)
 
     def _expire_includable(self, instance_id: str) -> None:
         _LOGGER.debug("Includable device %s heartbeat timed out, removing", instance_id)
@@ -439,7 +452,16 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
             _LOGGER.error("No includable device with instance_id %s", instance_id)
             return None
         device_id = info.device_id
+        self._including_device_ids.add(device_id)
+        try:
+            return await self._include_device(instance_id, info)
+        finally:
+            self._including_device_ids.discard(device_id)
 
+    async def _include_device(
+        self, instance_id: str, info: IncludableDeviceInfo
+    ) -> str | None:
+        device_id = info.device_id
         request = build_inclusion_obj(info.service, instance_id)
         try:
             replies = await self.send_request(
