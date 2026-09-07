@@ -191,10 +191,15 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
                             await task
                         except (asyncio.CancelledError, Exception) as err:  # noqa: BLE001 - best-effort cleanup, cancellation is expected
                             _LOGGER.debug("Error awaiting cancelled task: %s", err)
-                # Cancel any pending reply futures so waiters don't hang
+                # Fail pending reply waiters with a connection error so callers
+                # handle it as a transport failure instead of task cancellation.
                 for fut in self._pending_replies.values():
                     if not fut.done():
-                        fut.cancel()
+                        fut.set_exception(
+                            HomeAssistantError(
+                                "WebSocket disconnected before a reply arrived"
+                            )
+                        )
                 self._pending_replies.clear()
                 self._pending_reply_devices.clear()
                 # Let entities re-check availability now that we're disconnected.
@@ -587,16 +592,13 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
                 await self._ws.send_str(request.model_dump_json())
                 _LOGGER.debug("Sent request to device %s: %s", device_id, request)
 
-                try:
-                    async with asyncio.timeout(wait_for_response_sec):
-                        replies = await asyncio.gather(*futures.values())
-                except TimeoutError:
-                    for rid in pending_ids:
-                        self._pending_replies.pop(rid, None)
-                    raise
+                async with asyncio.timeout(wait_for_response_sec):
+                    replies = await asyncio.gather(*futures.values())
 
                 return IngressMessageList(list(replies))
             finally:
+                for rid in pending_ids:
+                    self._pending_replies.pop(rid, None)
                 remaining = self._pending_reply_devices.get(device_id, 1) - 1
                 if remaining <= 0:
                     self._pending_reply_devices.pop(device_id, None)
