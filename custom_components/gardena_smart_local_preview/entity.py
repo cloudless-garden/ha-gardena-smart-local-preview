@@ -133,14 +133,15 @@ class GardenaEntity(CoordinatorEntity[GardenaSmartLocalCoordinator]):
         version until Home Assistant restarts.
         """
         device = self.coordinator.data.get(self._device.id)
+        device_entry = self.device_entry
         if (
             device
             and device.software_version
-            and self.device_entry
-            and self.device_entry.sw_version != device.software_version
+            and isinstance(device_entry, dr.DeviceEntry)
+            and device_entry.sw_version != device.software_version
         ):
             dr.async_get(self.hass).async_update_device(
-                self.device_entry.id, sw_version=device.software_version
+                device_entry.id, sw_version=device.software_version
             )
         super()._handle_coordinator_update()
 
