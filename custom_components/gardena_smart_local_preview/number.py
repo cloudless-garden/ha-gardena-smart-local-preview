@@ -43,22 +43,27 @@ async def async_setup_entry(
     known_valves: set[tuple[str, int]] = set()
 
     def _add_new_devices() -> None:
-        if not coordinator.data:
-            return
-        known_devices.intersection_update(coordinator.data)
+        # Prune the caches before the empty-data guard: when the last device
+        # subentry is removed coordinator.data is empty, and a stale key here
+        # would stop the same device's entities from being re-added if it is
+        # included again.
+        current = coordinator.data or {}
+        known_devices.intersection_update(current)
         known_button_time_valves.intersection_update(
             (device.id, valve_id)
-            for device in coordinator.data.values()
+            for device in current.values()
             if hasattr(device, "build_set_button_config_time_obj")
             for valve_id in device.valve_ids
         )
 
         current_valves: set[tuple[str, int]] = set()
-        for device in coordinator.data.values():
+        for device in current.values():
             for valve_id in getattr(device, "valve_ids", []):
                 current_valves.add((device.id, valve_id))
         known_valves.intersection_update(current_valves)
 
+        if not coordinator.data:
+            return
         entities_by_subentry_id: dict[str | None, list] = {}
         for device in coordinator.data.values():
             if hasattr(device, "build_set_button_config_time_obj"):
