@@ -36,6 +36,13 @@ INCLUDABLE_DEVICE_HEARTBEAT_TIMEOUT = 25
 INCLUSION_TIMEOUT = 30
 FIRMWARE_REPLY_TIMEOUT = 10
 COMMAND_REPLY_TIMEOUT = 10
+DISCOVERY_REPLY_TIMEOUT = 30
+# The first connect is only reported as successful once discovery finishes,
+# so the outer wait must outlast a full discovery round.
+INITIAL_CONNECT_TIMEOUT = DISCOVERY_REPLY_TIMEOUT + 10
+# Wait before reconnecting, whether the socket dropped with an error or was
+# closed cleanly, so a gateway that flaps does not spin this loop.
+RECONNECT_DELAY = 5
 # A device included outside our own inclusion flow (e.g. via the official
 # app while we're already connected) arrives as a burst of ordinary events
 # for a device_id we don't know yet. Debounce before re-running discovery so
@@ -110,7 +117,7 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
         self._task = self.hass.async_create_background_task(
             self._ws_loop(), "gardena_smart_local_preview_websocket"
         )
-        async with asyncio.timeout(15):
+        async with asyncio.timeout(INITIAL_CONNECT_TIMEOUT):
             await self._first_connect_result
 
     async def async_disconnect(self) -> None:
@@ -131,6 +138,7 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
         while True:
             reader_task = None
             consumer_task = None
+            reconnect = False
             try:
                 _LOGGER.debug("Connecting to GARDENA smart Gateway at %s", self.uri)
                 session = async_get_clientsession(self.hass)
@@ -171,6 +179,7 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
                     _LOGGER.info(
                         "Disconnected from GARDENA smart Gateway, reconnecting"
                     )
+                    reconnect = True
 
             except asyncio.CancelledError:
                 _LOGGER.debug("WebSocket loop cancelled")
@@ -181,7 +190,7 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
                 if self._first_connect_result and not self._first_connect_result.done():
                     self._first_connect_result.set_exception(err)
                 _LOGGER.error("WebSocket error: %s", err)
-                await asyncio.sleep(5)
+                reconnect = True
             finally:
                 self._ws = None
                 for task in (reader_task, consumer_task):
@@ -199,6 +208,11 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
                 self._pending_reply_devices.clear()
                 # Let entities re-check availability now that we're disconnected.
                 self.async_update_listeners()
+
+            # Back off only after the socket has been torn down, so the
+            # coordinator does not report a live connection during the wait.
+            if reconnect:
+                await asyncio.sleep(RECONNECT_DELAY)
 
     async def _ws_reader(self, ws: aiohttp.ClientWebSocketResponse) -> None:
         async for msg in ws:
@@ -259,7 +273,7 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
 
         try:
             replies = await self.send_request(
-                "discovery", discovery, wait_for_response_sec=30
+                "discovery", discovery, wait_for_response_sec=DISCOVERY_REPLY_TIMEOUT
             )
         except TimeoutError:
             raise RuntimeError(
