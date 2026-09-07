@@ -334,6 +334,39 @@ async def test_reconfigure_cannot_connect(hass: HomeAssistant) -> None:
     assert result["errors"] == {"base": "cannot_connect"}
 
 
+async def test_reconfigure_rejects_other_entry_host(
+    hass: HomeAssistant, mock_setup_entry
+) -> None:
+    """Reconfiguring onto another entry's host aborts."""
+    other_host = "192.168.1.200"
+    MockConfigEntry(
+        domain=DOMAIN,
+        unique_id=other_host,
+        data={
+            CONF_HOST: other_host,
+            CONF_PORT: MOCK_PORT,
+            CONF_PASSWORD: MOCK_PASSWORD,
+        },
+    ).add_to_hass(hass)
+
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id=MOCK_HOST,
+        data={CONF_HOST: MOCK_HOST, CONF_PORT: MOCK_PORT, CONF_PASSWORD: MOCK_PASSWORD},
+    )
+    entry.add_to_hass(hass)
+
+    result = await entry.start_reconfigure_flow(hass)
+    with patch(PATCH_TRY_CONNECT, return_value=None):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {CONF_HOST: other_host, CONF_PORT: MOCK_PORT, CONF_PASSWORD: MOCK_PASSWORD},
+        )
+
+    assert result["type"] == "abort"
+    assert result["reason"] == "already_configured"
+
+
 # ---------------------------------------------------------------------------
 # Import flow (YAML)
 # ---------------------------------------------------------------------------

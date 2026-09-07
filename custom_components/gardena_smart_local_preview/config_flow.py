@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import asyncio
 import base64
 import logging
 
@@ -143,6 +144,10 @@ class GardenaSmartLocalConfigFlow(ConfigFlow, domain=DOMAIN):
         entry = self._get_reconfigure_entry()
 
         if user_input is not None:
+            if user_input[CONF_HOST] != entry.data.get(CONF_HOST):
+                # Only a changed host can collide, and only with a different
+                # entry: matching the current one would abort every save.
+                self._async_abort_entries_match({CONF_HOST: user_input[CONF_HOST]})
             error = await _async_try_connect(
                 self.hass,
                 user_input[CONF_HOST],
@@ -188,13 +193,17 @@ async def _async_try_connect(
 
     try:
         session = async_get_clientsession(hass)
-        async with session.ws_connect(
-            URL.build(scheme="wss", host=host, port=port),
-            ssl=ssl_context,
-            headers={"Authorization": f"Basic {auth_b64}"},
-            # ty doesn't resolve aiohttp's legacy attr.ib()-based __init__.
-            timeout=aiohttp.ClientWSTimeout(ws_receive=10),  # ty: ignore[unknown-argument]
-        ) as ws:
+        # ClientWSTimeout only bounds receive(); this probe never receives a
+        # frame, so an unreachable host would otherwise hang on aiohttp's
+        # much longer default. Cap the whole attempt.
+        async with (
+            asyncio.timeout(10),
+            session.ws_connect(
+                URL.build(scheme="wss", host=host, port=port),
+                ssl=ssl_context,
+                headers={"Authorization": f"Basic {auth_b64}"},
+            ) as ws,
+        ):
             await ws.close()
     except aiohttp.WSServerHandshakeError as err:
         if err.status == 401:
