@@ -83,6 +83,29 @@ async def test_user_flow_success(hass: HomeAssistant, mock_setup_entry) -> None:
     }
 
 
+async def test_user_flow_strips_host_whitespace(
+    hass: HomeAssistant, mock_setup_entry
+) -> None:
+    """Leading/trailing whitespace in the host is stripped before use."""
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_USER}
+    )
+
+    with patch(PATCH_TRY_CONNECT, return_value=None) as try_connect:
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {
+                CONF_HOST: f"  {MOCK_HOST}\t",
+                CONF_PORT: MOCK_PORT,
+                CONF_PASSWORD: MOCK_PASSWORD,
+            },
+        )
+
+    assert result["type"] == "create_entry"
+    assert result["data"][CONF_HOST] == MOCK_HOST
+    assert try_connect.call_args[0][1] == MOCK_HOST
+
+
 async def test_user_flow_cannot_connect(hass: HomeAssistant) -> None:
     """Connection failure shows an error and keeps the form open."""
     result = await hass.config_entries.flow.async_init(
@@ -143,6 +166,25 @@ async def test_user_flow_unknown_error(hass: HomeAssistant) -> None:
 
     assert result["type"] == "form"
     assert result["errors"] == {"base": "unknown"}
+
+
+async def test_user_flow_invalid_host(hass: HomeAssistant) -> None:
+    """A malformed host is reported as invalid, not as an unknown error."""
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_USER}
+    )
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {
+            CONF_HOST: "10.0.1.194 junk",
+            CONF_PORT: MOCK_PORT,
+            CONF_PASSWORD: MOCK_PASSWORD,
+        },
+    )
+
+    assert result["type"] == "form"
+    assert result["errors"] == {"base": "invalid_host"}
 
 
 async def test_user_flow_already_configured(hass: HomeAssistant) -> None:

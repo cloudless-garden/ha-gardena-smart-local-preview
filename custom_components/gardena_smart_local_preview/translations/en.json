@@ -201,6 +201,7 @@
     "error": {
       "cannot_connect": "Failed to connect to the gateway",
       "invalid_auth": "Invalid password",
+      "invalid_host": "Invalid hostname or IP address",
       "unknown": "Unexpected error"
     },
     "abort": {

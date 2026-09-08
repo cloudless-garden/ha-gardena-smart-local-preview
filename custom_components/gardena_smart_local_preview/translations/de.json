@@ -201,6 +201,7 @@
     "error": {
       "cannot_connect": "Verbindung zum Gateway fehlgeschlagen",
       "invalid_auth": "Falsches Passwort",
+      "invalid_host": "Ungültiger Hostname oder ungültige IP-Adresse",
       "unknown": "Unerwarteter Fehler"
     },
     "abort": {
