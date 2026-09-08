@@ -191,6 +191,7 @@
     "error": {
       "cannot_connect": "Échec de connexion à la passerelle",
       "invalid_auth": "Mot de passe invalide",
+      "invalid_host": "Nom d'hôte ou adresse IP invalide",
       "unknown": "Erreur inattendue"
     },
     "abort": {
