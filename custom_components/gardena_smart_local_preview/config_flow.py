@@ -27,6 +27,10 @@ from .coordinator import GardenaSmartLocalCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
+# A host pasted with surrounding whitespace is rejected by yarl; trim it in
+# one place so every step stores and connects to the clean value.
+_HOST = vol.All(str, str.strip)
+
 
 class GardenaSmartLocalConfigFlow(ConfigFlow, domain=DOMAIN):
     VERSION = 1
@@ -70,7 +74,7 @@ class GardenaSmartLocalConfigFlow(ConfigFlow, domain=DOMAIN):
             step_id="user",
             data_schema=vol.Schema(
                 {
-                    vol.Required(CONF_HOST): str,
+                    vol.Required(CONF_HOST): _HOST,
                     vol.Optional(CONF_PORT, default=DEFAULT_PORT): int,
                     vol.Optional(CONF_PASSWORD, default=""): str,
                 }
@@ -121,7 +125,7 @@ class GardenaSmartLocalConfigFlow(ConfigFlow, domain=DOMAIN):
             step_id="discovery_confirm",
             data_schema=vol.Schema(
                 {
-                    vol.Required(CONF_HOST, default=self._discovered_host): str,
+                    vol.Required(CONF_HOST, default=self._discovered_host): _HOST,
                     vol.Optional(CONF_PORT, default=self._discovered_port): int,
                     vol.Optional(CONF_PASSWORD, default=""): str,
                 }
@@ -154,7 +158,9 @@ class GardenaSmartLocalConfigFlow(ConfigFlow, domain=DOMAIN):
             step_id="reconfigure",
             data_schema=vol.Schema(
                 {
-                    vol.Required(CONF_HOST, default=entry.data.get(CONF_HOST, "")): str,
+                    vol.Required(
+                        CONF_HOST, default=entry.data.get(CONF_HOST, "")
+                    ): _HOST,
                     vol.Optional(
                         CONF_PORT, default=entry.data.get(CONF_PORT, DEFAULT_PORT)
                     ): int,
@@ -167,6 +173,7 @@ class GardenaSmartLocalConfigFlow(ConfigFlow, domain=DOMAIN):
         )
 
     async def async_step_import(self, import_data: ConfigType) -> ConfigFlowResult:
+        import_data[CONF_HOST] = _HOST(import_data[CONF_HOST])
         await self.async_set_unique_id(import_data[CONF_HOST])
         self._abort_if_unique_id_configured()
         return self.async_create_entry(title="GARDENA smart local", data=import_data)
@@ -197,6 +204,10 @@ async def _async_try_connect(
     except (aiohttp.ClientConnectionError, TimeoutError, OSError):
         _LOGGER.debug("Error connecting to %s:%s", host, port, exc_info=True)
         return "cannot_connect"
+    except ValueError:
+        # yarl rejects a host that is empty or contains spaces/control chars.
+        _LOGGER.debug("Invalid host %r", host)
+        return "invalid_host"
     except Exception:
         _LOGGER.exception("Unexpected error connecting to %s:%s", host, port)
         return "unknown"
