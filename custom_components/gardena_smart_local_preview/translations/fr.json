@@ -146,6 +146,16 @@
           "description": "Durée d'ouverture de la vanne, en secondes (60-10800). Utilise la durée configurée de la vanne si omis."
         }
       }
+    },
+    "start_pump": {
+      "name": "Démarrer la pompe",
+      "description": "Démarre une pompe pendant une durée déterminée, en remplaçant éventuellement sa durée configurée pour cet appel uniquement. La pompe s'arrête automatiquement une fois cette durée écoulée.",
+      "fields": {
+        "duration": {
+          "name": "Durée",
+          "description": "Durée de fonctionnement de la pompe, en secondes (60-5400). Utilise la durée configurée de la pompe si omis."
+        }
+      }
     }
   },
   "config": {
