@@ -92,6 +92,9 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
         self._includable_devices: dict[str, IncludableDeviceInfo] = {}
         self._includable_timeouts: dict[str, asyncio.TimerHandle] = {}
         self._first_connect_result: asyncio.Future[None] | None = None
+        # True once an outage has been logged at ERROR, so the reconnect loop
+        # keeps quiet until the gateway is reachable again.
+        self._outage_logged = False
         # Devices with a command reply still outstanding. While a device is
         # in here, incoming Events for it are merged into self._devices but
         # not broadcast — the gateway reports state changes (e.g. a valve
@@ -149,7 +152,15 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
                     headers={"Authorization": f"Basic {self.auth_b64}"},
                 ) as ws:
                     self._ws = ws
-                    _LOGGER.info("Connected to GARDENA smart Gateway at %s", self.uri)
+                    if self._outage_logged:
+                        _LOGGER.info(
+                            "Reconnected to GARDENA smart Gateway at %s", self.uri
+                        )
+                        self._outage_logged = False
+                    else:
+                        _LOGGER.info(
+                            "Connected to GARDENA smart Gateway at %s", self.uri
+                        )
 
                     reader_task = self.hass.async_create_background_task(
                         self._ws_reader(ws),
@@ -189,7 +200,11 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
             except Exception as err:  # noqa: BLE001 - any transport error must trigger a reconnect
                 if self._first_connect_result and not self._first_connect_result.done():
                     self._first_connect_result.set_exception(err)
-                _LOGGER.error("WebSocket error: %s", err)
+                if not self._outage_logged:
+                    _LOGGER.error("Lost connection to GARDENA smart Gateway: %s", err)
+                    self._outage_logged = True
+                else:
+                    _LOGGER.debug("Reconnect to GARDENA smart Gateway failed: %s", err)
                 reconnect = True
             finally:
                 self._ws = None
