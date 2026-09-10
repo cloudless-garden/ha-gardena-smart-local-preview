@@ -32,6 +32,7 @@ MOCK_PASSWORD = "testpassword"
 PATCH_TRY_CONNECT = (
     "custom_components.gardena_smart_local_preview.config_flow._async_try_connect"
 )
+PATCH_EXTRACT_HOSTNAME_FROM_CERT = "custom_components.gardena_smart_local_preview.config_flow._async_extract_hostname_from_cert"
 PATCH_SETUP_ENTRY = "custom_components.gardena_smart_local_preview.async_setup_entry"
 PATCH_UNLOAD_ENTRY = "custom_components.gardena_smart_local_preview.async_unload_entry"
 
@@ -41,6 +42,13 @@ def mock_setup_entry():
     """Prevent actual integration setup during config flow tests."""
     with patch(PATCH_SETUP_ENTRY, return_value=True):
         yield
+
+
+@pytest.fixture(autouse=True)
+def mock_extract_hostname_from_cert():
+    """Skip the TLS certificate probe unless a test opts in."""
+    with patch(PATCH_EXTRACT_HOSTNAME_FROM_CERT, return_value=None) as mock:
+        yield mock
 
 
 def _make_zeroconf_info(
@@ -120,6 +128,71 @@ async def test_user_form_schema_serializes(hass: HomeAssistant) -> None:
     )
     host = next(f for f in fields if f["name"] == CONF_HOST)
     assert host["strip"] is True
+
+
+async def test_user_flow_uses_certificate_hostname(
+    hass: HomeAssistant, mock_setup_entry, mock_extract_hostname_from_cert
+) -> None:
+    """The hostname from the TLS certificate becomes the unique_id."""
+    mock_extract_hostname_from_cert.return_value = "GARDENA-123456"
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_USER}
+    )
+    with patch(PATCH_TRY_CONNECT, return_value=None):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {CONF_HOST: MOCK_HOST, CONF_PORT: MOCK_PORT, CONF_PASSWORD: MOCK_PASSWORD},
+        )
+
+    assert result["type"] == "create_entry"
+    assert result["result"].unique_id == "GARDENA-123456"
+    assert result["result"].title == "GARDENA-123456"
+
+
+async def test_user_flow_falls_back_to_host_without_certificate_name(
+    hass: HomeAssistant, mock_setup_entry
+) -> None:
+    """Without a named certificate the host stays the unique_id."""
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_USER}
+    )
+    with patch(PATCH_TRY_CONNECT, return_value=None):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {CONF_HOST: MOCK_HOST, CONF_PORT: MOCK_PORT, CONF_PASSWORD: MOCK_PASSWORD},
+        )
+
+    assert result["type"] == "create_entry"
+    assert result["result"].unique_id == MOCK_HOST
+
+
+async def test_user_flow_matches_discovered_entry_by_certificate_id(
+    hass: HomeAssistant, mock_extract_hostname_from_cert
+) -> None:
+    """A manual entry for an already discovered gateway aborts as duplicate."""
+    mock_extract_hostname_from_cert.return_value = "GARDENA-123456"
+    MockConfigEntry(
+        domain=DOMAIN,
+        unique_id="GARDENA-123456",
+        data={
+            CONF_HOST: "192.168.1.5",
+            CONF_PORT: MOCK_PORT,
+            CONF_PASSWORD: MOCK_PASSWORD,
+        },
+    ).add_to_hass(hass)
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_USER}
+    )
+    with patch(PATCH_TRY_CONNECT, return_value=None):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {CONF_HOST: MOCK_HOST, CONF_PORT: MOCK_PORT, CONF_PASSWORD: MOCK_PASSWORD},
+        )
+
+    assert result["type"] == "abort"
+    assert result["reason"] == "already_configured"
 
 
 async def test_user_flow_cannot_connect(hass: HomeAssistant) -> None:
@@ -333,6 +406,30 @@ async def test_reconfigure_success(hass: HomeAssistant, mock_setup_entry) -> Non
     assert result["type"] == "abort"
     assert result["reason"] == "reconfigure_successful"
     assert entry.data[CONF_HOST] == new_host
+
+
+async def test_reconfigure_migrates_unique_id_from_certificate(
+    hass: HomeAssistant, mock_setup_entry, mock_extract_hostname_from_cert
+) -> None:
+    """Reconfiguring a host-based entry adopts the certificate gateway id."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id=MOCK_HOST,
+        data={CONF_HOST: MOCK_HOST, CONF_PORT: MOCK_PORT, CONF_PASSWORD: MOCK_PASSWORD},
+    )
+    entry.add_to_hass(hass)
+    mock_extract_hostname_from_cert.return_value = "GARDENA-123456"
+
+    result = await entry.start_reconfigure_flow(hass)
+    with patch(PATCH_TRY_CONNECT, return_value=None):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {CONF_HOST: MOCK_HOST, CONF_PORT: MOCK_PORT, CONF_PASSWORD: MOCK_PASSWORD},
+        )
+
+    assert result["type"] == "abort"
+    assert result["reason"] == "reconfigure_successful"
+    assert entry.unique_id == "GARDENA-123456"
 
 
 async def test_reconfigure_cannot_connect(hass: HomeAssistant) -> None:
