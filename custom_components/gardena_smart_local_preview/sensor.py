@@ -54,8 +54,10 @@ async def async_setup_entry(
     known_firmware_state_devices: set[str] = set()
 
     def _add_new_devices() -> None:
-        if not coordinator.data:
-            return
+        # Prune the caches before the empty-data guard: when the last device
+        # subentry is removed coordinator.data is empty, and a stale key here
+        # would stop the same device's entities from being re-added if it is
+        # included again.
         for cache in (
             known_temp_devices,
             known_moisture_devices,
@@ -66,7 +68,9 @@ async def async_setup_entry(
             known_schedule_devices,
             known_firmware_state_devices,
         ):
-            cache.intersection_update(coordinator.data)
+            cache.intersection_update(coordinator.data or {})
+        if not coordinator.data:
+            return
         entities_by_subentry_id: dict[str | None, list] = {}
         for device in coordinator.data.values():
             device_entities = []

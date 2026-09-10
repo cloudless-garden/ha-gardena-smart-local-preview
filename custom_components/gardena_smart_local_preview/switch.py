@@ -49,9 +49,13 @@ async def async_setup_entry(
     )
 
     def _add_new_devices() -> None:
+        # Prune the cache before the empty-data guard: when the last device
+        # subentry is removed coordinator.data is empty, and a stale key here
+        # would stop the same device's entities from being re-added if it is
+        # included again.
+        known_devices.intersection_update(coordinator.data or {})
         if not coordinator.data:
             return
-        known_devices.intersection_update(coordinator.data)
         entities_by_subentry_id: dict[str | None, list] = {}
         for device in coordinator.data.values():
             if isinstance(device, PowerAdapter) and device.id not in known_devices:

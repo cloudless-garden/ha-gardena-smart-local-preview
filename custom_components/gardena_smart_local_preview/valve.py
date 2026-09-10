@@ -49,14 +49,18 @@ async def async_setup_entry(
     )
 
     def _add_new_devices() -> None:
-        if not coordinator.data:
-            return
+        # Prune the cache before the empty-data guard: when the last device
+        # subentry is removed coordinator.data is empty, and a stale key here
+        # would stop the same device's entities from being re-added if it is
+        # included again.
         known_valves.intersection_update(
             (device.id, valve_id)
-            for device in coordinator.data.values()
+            for device in (coordinator.data or {}).values()
             if hasattr(device, "valve_ids")
             for valve_id in device.valve_ids
         )
+        if not coordinator.data:
+            return
         entities_by_subentry_id: dict[str | None, list] = {}
         for device in coordinator.data.values():
             if not hasattr(device, "valve_ids"):
