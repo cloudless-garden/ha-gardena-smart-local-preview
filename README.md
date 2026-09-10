@@ -208,7 +208,7 @@ See [gardena-smart-local-api] for more details about the device types.
 
 | Device                                | Article no.                                | Notes                                                       |
 | ------------------------------------- | ------------------------------------------ | ----------------------------------------------------------- |
-| GARDENA smart SILENO sense            | 19941-20, 19942-20                         | Can not be supported (not using the GARDENA smart gateway)  |
+| GARDENA smart SILENO sense            | 19941-20, 19942-20                         | Can not be supported (not using the GARDENA smart Gateway)  |
 
 ## Related Projects
 
