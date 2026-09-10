@@ -2,11 +2,14 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import asyncio
 import base64
+import contextlib
 import logging
 
 import aiohttp
 import voluptuous as vol
+from cryptography import x509
 from homeassistant.config_entries import (
     ConfigEntry,
     ConfigFlow,
@@ -50,25 +53,27 @@ class GardenaSmartLocalConfigFlow(ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
 
         if user_input is not None:
-            await self.async_set_unique_id(user_input[CONF_HOST])
+            host = user_input[CONF_HOST]
+            unique_id = (
+                await _async_read_gateway_id(host, user_input[CONF_PORT]) or host
+            )
+            await self.async_set_unique_id(unique_id)
             self._abort_if_unique_id_configured()
-            # A zeroconf-discovered entry for the same host would have a
-            # different (mDNS name based) unique_id, so also match on host.
-            self._async_abort_entries_match({CONF_HOST: user_input[CONF_HOST]})
+            # An entry added the other way round (zeroconf vs. manual), or one
+            # created before the gateway certificate carried its name, uses the
+            # host as its unique_id, so also match on host.
+            self._async_abort_entries_match({CONF_HOST: host})
 
             error = await _async_try_connect(
                 self.hass,
-                user_input[CONF_HOST],
+                host,
                 user_input[CONF_PORT],
                 user_input[CONF_PASSWORD],
             )
             if error:
                 errors["base"] = error
             else:
-                return self.async_create_entry(
-                    title=user_input[CONF_HOST],
-                    data=user_input,
-                )
+                return self.async_create_entry(title=unique_id, data=user_input)
 
         return self.async_show_form(
             step_id="user",
@@ -152,7 +157,15 @@ class GardenaSmartLocalConfigFlow(ConfigFlow, domain=DOMAIN):
             if error:
                 errors["base"] = error
             else:
-                return self.async_update_reload_and_abort(entry, data=user_input)
+                unique_id = (
+                    await _async_read_gateway_id(
+                        user_input[CONF_HOST], user_input[CONF_PORT]
+                    )
+                    or entry.unique_id
+                )
+                return self.async_update_reload_and_abort(
+                    entry, data=user_input, unique_id=unique_id
+                )
 
         return self.async_show_form(
             step_id="reconfigure",
@@ -212,6 +225,49 @@ async def _async_try_connect(
         _LOGGER.exception("Unexpected error connecting to %s:%s", host, port)
         return "unknown"
 
+    return None
+
+
+async def _async_read_gateway_id(host: str, port: int) -> str | None:
+    """Return the gateway identity taken from its TLS certificate.
+
+    The gateway certificate lists its mDNS hostname (``GARDENA-xxxxxx``) as a
+    DNS name in the subjectAltName. That name is derived from the gateway MAC
+    and survives a certificate regeneration, which makes it a stable unique_id
+    that a manual and a discovered flow agree on. Return ``None`` when the
+    gateway is unreachable or runs firmware whose certificate has no such name.
+    """
+    try:
+        async with asyncio.timeout(10):
+            _, writer = await asyncio.open_connection(
+                host, port, ssl=get_default_no_verify_context()
+            )
+    except (OSError, TimeoutError):
+        _LOGGER.debug("Could not read the certificate of %s:%s", host, port)
+        return None
+
+    try:
+        ssl_object = writer.get_extra_info("ssl_object")
+        der = ssl_object.getpeercert(binary_form=True) if ssl_object else None
+    finally:
+        writer.close()
+        with contextlib.suppress(OSError):
+            await writer.wait_closed()
+
+    if not der:
+        return None
+
+    certificate = x509.load_der_x509_certificate(der)
+    try:
+        alt_names = certificate.extensions.get_extension_for_class(
+            x509.SubjectAlternativeName
+        )
+    except x509.ExtensionNotFound:
+        return None
+
+    for dns_name in alt_names.value.get_values_for_type(x509.DNSName):
+        if dns_name.endswith(".local"):
+            return dns_name.removesuffix(".local")
     return None
 
 
