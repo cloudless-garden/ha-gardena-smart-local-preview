@@ -29,7 +29,8 @@ _LOGGER = logging.getLogger(__name__)
 
 # A host pasted with surrounding whitespace is rejected by yarl; trim it in
 # one place so every step stores and connects to the clean value.
-_HOST = vol.All(str, str.strip)
+# vol.Strip keeps the form schema serializable for the frontend.
+_HOST = vol.All(str, vol.Strip)
 
 
 class GardenaSmartLocalConfigFlow(ConfigFlow, domain=DOMAIN):
