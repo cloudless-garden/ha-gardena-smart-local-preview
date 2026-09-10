@@ -16,7 +16,12 @@ from homeassistant.helpers import entity_platform
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .coordinator import GardenaSmartLocalCoordinator
-from .entity import GardenaEntity, find_device_subentry_id, get_power_duration_minutes
+from .entity import (
+    GardenaEntity,
+    find_device_subentry_id,
+    get_power_duration_minutes,
+    get_pump_duration_minutes,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -47,6 +52,17 @@ async def async_setup_entry(
         },
         "async_turn_on_for",
     )
+    platform.async_register_entity_service(
+        "start_pump",
+        {
+            # Seconds, like open_valve/enable_output. 60-5400 (1-90 min) is the
+            # duration range the official app offers for pumps.
+            vol.Optional("duration"): vol.All(
+                vol.Coerce(int), vol.Range(min=60, max=5400)
+            )
+        },
+        "async_turn_on_for",
+    )
 
     def _add_new_devices() -> None:
         if not coordinator.data:
@@ -65,7 +81,7 @@ async def async_setup_entry(
                 known_devices.add(device.id)
                 sid = find_device_subentry_id(entry, device.id)
                 entities_by_subentry_id.setdefault(sid, []).append(
-                    GardenaPumpSwitch(coordinator, device)
+                    GardenaPumpSwitch(coordinator, entry, device)
                 )
                 _LOGGER.info("Adding new pump switch entity for device %s", device.id)
         for sid, entities in entities_by_subentry_id.items():
@@ -121,9 +137,11 @@ class GardenaPumpSwitch(GardenaEntity, SwitchEntity):
     def __init__(
         self,
         coordinator: GardenaSmartLocalCoordinator,
+        entry: ConfigEntry,
         device: Pump,
     ) -> None:
         super().__init__(coordinator, device)
+        self._entry = entry
         self._attr_unique_id = f"{device.id}_switch"
         self._attr_name = None
 
@@ -139,6 +157,13 @@ class GardenaPumpSwitch(GardenaEntity, SwitchEntity):
             self._device.build_start_obj(DEFAULT_ON_DURATION_SECONDS)
         )
         _LOGGER.info("Turning on pump %s", self._device.id)
+
+    async def async_turn_on_for(self, duration: int | None = None) -> None:
+        if duration is None:
+            minutes = get_pump_duration_minutes(self._entry, self._device.id)
+            duration = minutes * 60
+        await self._send_confirmed_command(self._device.build_start_obj(duration))
+        _LOGGER.info("Starting pump %s duration=%s seconds", self._device.id, duration)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         await self._send_confirmed_command(self._device.build_stop_obj())
