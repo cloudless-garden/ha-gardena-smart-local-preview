@@ -8,6 +8,7 @@ DEFAULT_PORT = 8443
 DEFAULT_VALVE_DURATION_MINUTES = 30
 DEFAULT_POWER_DURATION_MINUTES = 30
 DEFAULT_PUMP_DURATION_MINUTES = 30
+DEFAULT_MOWER_DURATION_HOURS = 6
 
 # Subentry data key holding {str(valve_id): minutes} for a device's valves
 CONF_VALVE_DURATIONS = "valve_durations"
@@ -15,3 +16,5 @@ CONF_VALVE_DURATIONS = "valve_durations"
 CONF_POWER_DURATION = "power_duration"
 # Subentry data key holding a pump's default timed-start duration, in minutes
 CONF_PUMP_DURATION = "pump_duration"
+# Subentry data key holding a mower's default manual-start duration, in hours
+CONF_MOWER_DURATION = "mower_duration"

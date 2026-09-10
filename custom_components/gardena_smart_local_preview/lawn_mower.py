@@ -19,7 +19,11 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .coordinator import GardenaSmartLocalCoordinator
-from .entity import GardenaEntity, find_device_subentry_id
+from .entity import (
+    GardenaEntity,
+    find_device_subentry_id,
+    get_mower_duration_hours,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -49,7 +53,7 @@ async def async_setup_entry(
                 known_devices.add(device.id)
                 sid = find_device_subentry_id(entry, device.id)
                 entities_by_subentry_id.setdefault(sid, []).append(
-                    GardenaMower(coordinator, device)
+                    GardenaMower(coordinator, entry, device)
                 )
                 _LOGGER.info("Adding new mower entity for device %s", device.id)
         for sid, entities in entities_by_subentry_id.items():
@@ -63,9 +67,11 @@ class GardenaMower(GardenaEntity, LawnMowerEntity):
     def __init__(
         self,
         coordinator: GardenaSmartLocalCoordinator,
+        entry: ConfigEntry,
         device: Device,
     ) -> None:
         super().__init__(coordinator, device)
+        self._entry = entry
         self._attr_unique_id = f"{device.id}_lawn_mower"
         self._attr_name = None
         self._attr_reports_position = False
@@ -102,10 +108,11 @@ class GardenaMower(GardenaEntity, LawnMowerEntity):
         return None
 
     async def async_start_mowing(self) -> None:
+        hours = get_mower_duration_hours(self._entry, self._device.id)
         await self._send_confirmed_command(
-            self._device.build_start_mowing_obj(28800)  # 8 hours
+            self._device.build_start_mowing_obj(hours * 3600)
         )
-        _LOGGER.info("Start mowing with %s", self._device.id)
+        _LOGGER.info("Start mowing with %s for %s hours", self._device.id, hours)
 
     async def async_dock(self) -> None:
         await self._send_confirmed_command(self._device.build_stop_mowing_obj())

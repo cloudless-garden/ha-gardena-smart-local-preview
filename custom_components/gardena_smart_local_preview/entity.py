@@ -13,9 +13,11 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
+    CONF_MOWER_DURATION,
     CONF_POWER_DURATION,
     CONF_PUMP_DURATION,
     CONF_VALVE_DURATIONS,
+    DEFAULT_MOWER_DURATION_HOURS,
     DEFAULT_POWER_DURATION_MINUTES,
     DEFAULT_PUMP_DURATION_MINUTES,
     DEFAULT_VALVE_DURATION_MINUTES,
@@ -123,6 +125,34 @@ def async_set_pump_duration_minutes(
     subentry = entry.subentries[subentry_id]
     hass.config_entries.async_update_subentry(
         entry, subentry, data={**subentry.data, CONF_PUMP_DURATION: minutes}
+    )
+
+
+def get_mower_duration_hours(entry: ConfigEntry, device_id: str) -> int:
+    # Falls back to the default for devices without a subentry, and for mowers
+    # the user has never configured.
+    subentry_id = find_device_subentry_id(entry, device_id)
+    if subentry_id is None:
+        return DEFAULT_MOWER_DURATION_HOURS
+    hours = entry.subentries[subentry_id].data.get(CONF_MOWER_DURATION)
+    if not isinstance(hours, int):
+        return DEFAULT_MOWER_DURATION_HOURS
+    return hours
+
+
+@callback
+def async_set_mower_duration_hours(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    device_id: str,
+    hours: int,
+) -> None:
+    subentry_id = find_device_subentry_id(entry, device_id)
+    if subentry_id is None:
+        return
+    subentry = entry.subentries[subentry_id]
+    hass.config_entries.async_update_subentry(
+        entry, subentry, data={**subentry.data, CONF_MOWER_DURATION: hours}
     )
 
 
