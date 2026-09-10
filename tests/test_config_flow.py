@@ -11,9 +11,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import aiohttp
 import pytest
+import voluptuous_serialize
 from homeassistant.config_entries import SOURCE_IMPORT, SOURCE_USER, SOURCE_ZEROCONF
 from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_PORT
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
@@ -104,6 +106,19 @@ async def test_user_flow_strips_host_whitespace(
     assert result["type"] == "create_entry"
     assert result["data"][CONF_HOST] == MOCK_HOST
     assert try_connect.call_args[0][1] == MOCK_HOST
+
+
+async def test_user_form_schema_serializes(hass: HomeAssistant) -> None:
+    """The form schema must serialize, or the frontend gets a 500."""
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_USER}
+    )
+
+    fields = voluptuous_serialize.convert(
+        result["data_schema"], custom_serializer=cv.custom_serializer
+    )
+    host = next(f for f in fields if f["name"] == CONF_HOST)
+    assert host["strip"] is True
 
 
 async def test_user_flow_cannot_connect(hass: HomeAssistant) -> None:
