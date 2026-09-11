@@ -18,9 +18,11 @@ from .const import DEFAULT_VALVE_DURATION_MINUTES
 from .coordinator import GardenaSmartLocalCoordinator
 from .entity import (
     GardenaEntity,
+    async_set_mower_duration_hours,
     async_set_power_duration_minutes,
     async_set_valve_duration_minutes,
     find_device_subentry_id,
+    get_mower_duration_hours,
     get_power_duration_minutes,
     get_valve_duration_minutes,
 )
@@ -91,6 +93,18 @@ async def async_setup_entry(
                 )
                 _LOGGER.info(
                     "Adding new power outlet duration entity for device %s", device.id
+                )
+            elif (
+                hasattr(device, "build_start_mowing_obj")
+                and device.id not in known_devices
+            ):
+                known_devices.add(device.id)
+                sid = find_device_subentry_id(entry, device.id)
+                entities_by_subentry_id.setdefault(sid, []).append(
+                    GardenaMowerDuration(coordinator, entry, device)
+                )
+                _LOGGER.info(
+                    "Adding new mower duration entity for device %s", device.id
                 )
 
             new_valve_ids: list[int] = []
@@ -302,4 +316,46 @@ class GardenaPowerDuration(GardenaEntity, NumberEntity):
             "Set power outlet duration for device %s to %s minutes",
             self._device.id,
             minutes,
+        )
+
+
+class GardenaMowerDuration(GardenaEntity, NumberEntity):
+    _attr_native_min_value = 1
+    # Matches the maximum the GARDENA app offers.
+    _attr_native_max_value = 6
+    _attr_native_step = 1
+    _attr_native_unit_of_measurement = UnitOfTime.HOURS
+    _attr_mode = NumberMode.BOX
+    _attr_entity_category = EntityCategory.CONFIG
+
+    def __init__(
+        self,
+        coordinator: GardenaSmartLocalCoordinator,
+        entry: ConfigEntry,
+        device: Device,
+    ) -> None:
+        super().__init__(coordinator, device)
+        self._entry = entry
+        self._attr_unique_id = f"{device.id}_mower_duration"
+        self._attr_name = "Default Mowing Duration"
+        self._attr_icon = "mdi:timer-outline"
+
+    # Stored in the config subentry rather than read from the device, so it
+    # stays settable while the gateway or the device itself is unreachable.
+    @property
+    def available(self) -> bool:
+        return True
+
+    @property
+    def native_value(self) -> float | None:
+        return get_mower_duration_hours(self._entry, self._device.id)
+
+    async def async_set_native_value(self, value: float) -> None:
+        hours = int(value)
+        async_set_mower_duration_hours(self.hass, self._entry, self._device.id, hours)
+        self.async_write_ha_state()
+        _LOGGER.info(
+            "Set mower duration for device %s to %s hours",
+            self._device.id,
+            hours,
         )
