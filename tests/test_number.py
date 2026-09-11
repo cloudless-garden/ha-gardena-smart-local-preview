@@ -6,7 +6,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
 import pytest
 from homeassistant.const import UnitOfTime
@@ -18,91 +18,60 @@ from custom_components.gardena_smart_local_preview.const import (
 from custom_components.gardena_smart_local_preview.number import GardenaMowerDuration
 
 
-def _mock_device():
-    device = MagicMock()
-    device.id = "dev-1"
-    device.serial_number = "00000001"
-    device.software_version = "1.0.0"
-    device.hardware_version = "1.0"
-    device.model_definition.name = "Smart SILENO"
-    device.model_definition.model_number = "1"
-    device.valve_ids = []
-    return device
-
-
 @pytest.fixture
-def coordinator() -> MagicMock:
-    coord = MagicMock()
-    coord.connected = True
-    coord.send_request = AsyncMock(return_value=[])
-    return coord
-
-
-def _entry(subentries: dict | None = None) -> MagicMock:
-    cfg = MagicMock()
-    cfg.subentries = subentries or {}
-    return cfg
-
-
-def _build(coordinator: MagicMock, entry: MagicMock) -> GardenaMowerDuration:
-    device = _mock_device()
-    coordinator.data = {device.id: device}
-    entity = GardenaMowerDuration(coordinator, entry, device)
+def mower_duration(
+    coordinator: MagicMock, entry: MagicMock, mock_device: MagicMock
+) -> GardenaMowerDuration:
+    """Return a mower duration entity attached to a mocked hass."""
+    entity = GardenaMowerDuration(coordinator, entry, mock_device)
     entity.hass = MagicMock()
     entity.async_write_ha_state = MagicMock()
     return entity
 
 
-def test_mower_duration_defaults_without_subentry(coordinator: MagicMock) -> None:
+def test_mower_duration_defaults_without_subentry(
+    mower_duration: GardenaMowerDuration,
+) -> None:
     """Without a subentry the entity reports the default and stays available."""
-    entity = _build(coordinator, _entry())
-
-    assert entity.available is True
-    assert entity.native_value == DEFAULT_MOWER_DURATION_HOURS
-    assert entity.native_unit_of_measurement == UnitOfTime.HOURS
-    assert entity.unique_id == "dev-1_mower_duration"
-    assert entity.name == "Default Mowing Duration"
+    assert mower_duration.available is True
+    assert mower_duration.native_value == DEFAULT_MOWER_DURATION_HOURS
+    assert mower_duration.native_unit_of_measurement == UnitOfTime.HOURS
+    assert mower_duration.unique_id == "dev-1_mower_duration"
+    assert mower_duration.name == "Default Mowing Duration"
 
 
-def test_mower_duration_range(coordinator: MagicMock) -> None:
+def test_mower_duration_range(mower_duration: GardenaMowerDuration) -> None:
     """The duration can be set from 1 to 6 hours."""
-    entity = _build(coordinator, _entry())
-
-    assert entity.native_min_value == 1
-    assert entity.native_max_value == 6
+    assert mower_duration.native_min_value == 1
+    assert mower_duration.native_max_value == 6
 
 
-def test_mower_duration_reads_configured_hours(coordinator: MagicMock) -> None:
+def test_mower_duration_reads_configured_hours(
+    mower_duration: GardenaMowerDuration, subentry: MagicMock
+) -> None:
     """A stored hour count is reported as the value."""
-    subentry = MagicMock()
-    subentry.data = {"device_id": "dev-1", CONF_MOWER_DURATION: 3}
-    entity = _build(coordinator, _entry({"sub-1": subentry}))
+    subentry.data[CONF_MOWER_DURATION] = 3
 
-    assert entity.native_value == 3
+    assert mower_duration.native_value == 3
 
 
 async def test_mower_duration_set_writes_hours_to_subentry(
-    coordinator: MagicMock,
+    mower_duration: GardenaMowerDuration, subentry: MagicMock
 ) -> None:
     """Setting a value persists the hour count."""
-    subentry = MagicMock()
-    subentry.data = {"device_id": "dev-1"}
-    entity = _build(coordinator, _entry({"sub-1": subentry}))
+    await mower_duration.async_set_native_value(2.0)
 
-    await entity.async_set_native_value(2.0)
-
-    entity.hass.config_entries.async_update_subentry.assert_called_once()
-    _, kwargs = entity.hass.config_entries.async_update_subentry.call_args
+    update_subentry = mower_duration.hass.config_entries.async_update_subentry
+    update_subentry.assert_called_once()
+    _, kwargs = update_subentry.call_args
     assert kwargs["data"][CONF_MOWER_DURATION] == 2
-    entity.async_write_ha_state.assert_called_once()
+    mower_duration.async_write_ha_state.assert_called_once()
 
 
 async def test_mower_duration_set_without_subentry_is_noop(
-    coordinator: MagicMock,
+    mower_duration: GardenaMowerDuration,
 ) -> None:
     """Without a subentry there is nowhere to store the value, so nothing happens."""
-    entity = _build(coordinator, _entry())
+    await mower_duration.async_set_native_value(2.0)
 
-    await entity.async_set_native_value(2.0)
-
-    entity.hass.config_entries.async_update_subentry.assert_not_called()
+    mower_duration.hass.config_entries.async_update_subentry.assert_not_called()
