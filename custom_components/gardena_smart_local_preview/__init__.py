@@ -24,6 +24,7 @@ from homeassistant.const import (
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 
 from . import config_flow as config_flow
@@ -55,6 +56,31 @@ CONFIG_SCHEMA = vol.Schema(
     },
     extra=vol.ALLOW_EXTRA,
 )
+
+
+async def _async_exclude_and_report_failure(
+    hass: HomeAssistant, coordinator: GardenaSmartLocalCoordinator, device_id: str
+) -> None:
+    """Exclude a device the user removed from Home Assistant.
+
+    Home Assistant has already deleted the subentry by the time this runs, so
+    a failed exclusion cannot block that removal. Warn the user instead: the
+    device may still be paired on the gateway even though it is gone from HA.
+    """
+    if await coordinator.async_exclude_device(device_id):
+        # A still-paired device comes back after a failed exclusion; removing
+        # it again successfully resolves the earlier warning.
+        ir.async_delete_issue(hass, DOMAIN, f"exclude_failed_{device_id}")
+        return
+    ir.async_create_issue(
+        hass,
+        DOMAIN,
+        f"exclude_failed_{device_id}",
+        is_fixable=False,
+        severity=ir.IssueSeverity.WARNING,
+        translation_key="exclude_failed",
+        translation_placeholders={"device_id": device_id},
+    )
 
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
@@ -164,7 +190,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             if subentry_id not in current_ids:
                 del known_subentries[subentry_id]
                 hass.async_create_background_task(
-                    coordinator.async_exclude_device(device_id),
+                    _async_exclude_and_report_failure(hass, coordinator, device_id),
                     f"gardena_exclude_{device_id}",
                 )
         for sid, se in entry.subentries.items():

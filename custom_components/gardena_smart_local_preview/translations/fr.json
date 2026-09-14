@@ -158,6 +158,12 @@
       }
     }
   },
+  "issues": {
+    "exclude_failed": {
+      "title": "Impossible de retirer {device_id} de la passerelle",
+      "description": "Home Assistant a retiré l'appareil, mais la passerelle n'a pas confirmé l'exclusion : l'appareil est donc peut-être encore appairé avec la passerelle. Dans ce cas, il réapparaîtra dans Home Assistant la prochaine fois que la passerelle le signalera. Retirez-le à nouveau pendant que la passerelle est en ligne. Pour le retirer sans Home Assistant, réinitialisez l'appareil comme indiqué dans son manuel."
+    }
+  },
   "config": {
     "step": {
       "user": {

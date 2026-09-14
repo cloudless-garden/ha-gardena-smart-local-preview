@@ -168,6 +168,12 @@
       }
     }
   },
+  "issues": {
+    "exclude_failed": {
+      "title": "{device_id} konnte nicht vom Gateway entfernt werden",
+      "description": "Home Assistant hat das Gerät entfernt, aber das Gateway hat den Ausschluss nicht bestätigt. Das Gerät ist daher möglicherweise noch mit dem Gateway gekoppelt. In diesem Fall erscheint es wieder in Home Assistant, sobald das Gateway es das nächste Mal meldet. Entferne es dann erneut, während das Gateway online ist. Um es ohne Home Assistant zu entfernen, setze das Gerät wie in seiner Anleitung beschrieben zurück."
+    }
+  },
   "config": {
     "step": {
       "user": {
