@@ -158,6 +158,12 @@
       }
     }
   },
+  "issues": {
+    "exclude_failed": {
+      "title": "Could not remove {device_id} from the gateway",
+      "description": "Home Assistant removed the device, but the gateway did not confirm the exclusion, so the device may still be paired with the gateway. If it is, the device shows up in Home Assistant again the next time the gateway reports it. Remove it again while the gateway is online. To remove it without Home Assistant, reset the device as described in its manual."
+    }
+  },
   "config": {
     "step": {
       "user": {
