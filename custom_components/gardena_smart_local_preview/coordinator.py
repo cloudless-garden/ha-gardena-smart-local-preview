@@ -215,6 +215,10 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
                             await task
                         except (asyncio.CancelledError, Exception) as err:  # noqa: BLE001 - best-effort cleanup, cancellation is expected
                             _LOGGER.debug("Error awaiting cancelled task: %s", err)
+                # Frames still queued belong to the closed socket; the next
+                # connection's consumer would otherwise apply them as stale
+                # state or unknown devices before the new discovery completes.
+                self._msg_queue = asyncio.Queue()
                 # Fail pending reply waiters with a connection error so callers
                 # handle it as a transport failure instead of task cancellation.
                 for fut in self._pending_replies.values():
