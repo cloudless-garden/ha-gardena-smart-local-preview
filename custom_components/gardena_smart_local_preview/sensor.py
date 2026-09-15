@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-import logging
+from functools import partial
 from typing import ClassVar
 
 from gardena_smart_local_api.devices import Pump
@@ -29,9 +29,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .coordinator import GardenaSmartLocalCoordinator
-from .entity import GardenaEntity, find_device_subentry_id
-
-_LOGGER = logging.getLogger(__name__)
+from .entity import EntityFactories, GardenaEntity, async_setup_device_entities
 
 # State comes only from the coordinator's push (no polling, no actions) —
 # there is nothing here for PARALLEL_UPDATES to throttle
@@ -44,105 +42,56 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     coordinator: GardenaSmartLocalCoordinator = entry.runtime_data
-    known_temp_devices: set[str] = set()
-    known_moisture_devices: set[str] = set()
-    known_light_devices: set[str] = set()
-    known_battery_devices: set[str] = set()
-    known_rf_link_devices: set[str] = set()
-    known_pump_devices: set[str] = set()
-    known_schedule_devices: set[str] = set()
-    known_firmware_state_devices: set[str] = set()
 
-    def _add_new_devices() -> None:
-        if not coordinator.data:
-            return
-        for cache in (
-            known_temp_devices,
-            known_moisture_devices,
-            known_light_devices,
-            known_battery_devices,
-            known_rf_link_devices,
-            known_pump_devices,
-            known_schedule_devices,
-            known_firmware_state_devices,
-        ):
-            cache.intersection_update(coordinator.data)
-        entities_by_subentry_id: dict[str | None, list] = {}
-        for device in coordinator.data.values():
-            device_entities = []
-            if hasattr(device, "temperature") and device.id not in known_temp_devices:
-                known_temp_devices.add(device.id)
-                device_entities.append(GardenaTemperatureSensor(coordinator, device))
-                _LOGGER.info(
-                    "Adding new temperature sensor entity for device %s", device.id
-                )
-            if (
-                hasattr(device, "soil_moisture")
-                and device.id not in known_moisture_devices
-            ):
-                known_moisture_devices.add(device.id)
-                device_entities.append(GardenaSoilMoistureSensor(coordinator, device))
-                _LOGGER.info(
-                    "Adding new soil moisture sensor entity for device %s", device.id
-                )
-            if hasattr(device, "light") and device.id not in known_light_devices:
-                known_light_devices.add(device.id)
-                device_entities.append(GardenaLightSensor(coordinator, device))
-                _LOGGER.info("Adding new light sensor entity for device %s", device.id)
-            if (
-                hasattr(device, "battery_level")
-                and device.id not in known_battery_devices
-            ):
-                known_battery_devices.add(device.id)
-                device_entities.append(GardenaBatterySensor(coordinator, device))
-                _LOGGER.info(
-                    "Adding new battery sensor entity for device %s", device.id
-                )
-            if (
-                hasattr(device, "rf_link_quality")
-                and device.id not in known_rf_link_devices
-            ):
-                known_rf_link_devices.add(device.id)
-                device_entities.append(GardenaRfLinkQualitySensor(coordinator, device))
-                _LOGGER.info(
-                    "Adding new RF link quality sensor entity for device %s", device.id
-                )
-            if isinstance(device, Pump) and device.id not in known_pump_devices:
-                known_pump_devices.add(device.id)
-                device_entities.extend(
-                    [
-                        GardenaPumpPressureSensor(coordinator, device),
-                        GardenaPumpTemperatureSensor(coordinator, device),
-                        GardenaPumpFlowRateSensor(coordinator, device),
-                        GardenaPumpFlowTotalSensor(coordinator, device),
-                        GardenaPumpFlowSinceResetSensor(coordinator, device),
-                        GardenaPumpStateSensor(coordinator, device),
-                    ]
-                )
-                _LOGGER.info("Adding new pump sensor entities for device %s", device.id)
-            if (
-                hasattr(device, "schedule_count")
-                and device.id not in known_schedule_devices
-            ):
-                known_schedule_devices.add(device.id)
-                device_entities.append(GardenaScheduleCountSensor(coordinator, device))
-                _LOGGER.info("Adding schedule count sensor for device %s", device.id)
-            if device.id not in known_firmware_state_devices:
-                known_firmware_state_devices.add(device.id)
-                device_entities.append(
-                    GardenaFirmwareUpdateStateSensor(coordinator, device)
-                )
-                _LOGGER.info(
-                    "Adding firmware update state sensor for device %s", device.id
-                )
-            if device_entities:
-                sid = find_device_subentry_id(entry, device.id)
-                entities_by_subentry_id.setdefault(sid, []).extend(device_entities)
-        for sid, entities in entities_by_subentry_id.items():
-            async_add_entities(entities, config_subentry_id=sid)
+    def _entities_for_device(device: Device) -> EntityFactories:
+        entities: EntityFactories = {}
+        if hasattr(device, "temperature"):
+            entities["temperature"] = partial(
+                GardenaTemperatureSensor, coordinator, device
+            )
+        if hasattr(device, "soil_moisture"):
+            entities["soil_moisture"] = partial(
+                GardenaSoilMoistureSensor, coordinator, device
+            )
+        if hasattr(device, "light"):
+            entities["light"] = partial(GardenaLightSensor, coordinator, device)
+        if hasattr(device, "battery_level"):
+            entities["battery"] = partial(GardenaBatterySensor, coordinator, device)
+        if hasattr(device, "rf_link_quality"):
+            entities["rf_link_quality"] = partial(
+                GardenaRfLinkQualitySensor, coordinator, device
+            )
+        if isinstance(device, Pump):
+            entities["pump_pressure"] = partial(
+                GardenaPumpPressureSensor, coordinator, device
+            )
+            entities["pump_temperature"] = partial(
+                GardenaPumpTemperatureSensor, coordinator, device
+            )
+            entities["pump_flow_rate"] = partial(
+                GardenaPumpFlowRateSensor, coordinator, device
+            )
+            entities["pump_flow_total"] = partial(
+                GardenaPumpFlowTotalSensor, coordinator, device
+            )
+            entities["pump_flow_since_reset"] = partial(
+                GardenaPumpFlowSinceResetSensor, coordinator, device
+            )
+            entities["pump_state"] = partial(
+                GardenaPumpStateSensor, coordinator, device
+            )
+        if hasattr(device, "schedule_count"):
+            entities["schedule_count"] = partial(
+                GardenaScheduleCountSensor, coordinator, device
+            )
+        entities["firmware_update_state"] = partial(
+            GardenaFirmwareUpdateStateSensor, coordinator, device
+        )
+        return entities
 
-    entry.async_on_unload(coordinator.async_add_listener(_add_new_devices))
-    _add_new_devices()
+    async_setup_device_entities(
+        entry, coordinator, async_add_entities, _entities_for_device
+    )
 
 
 class GardenaTemperatureSensor(GardenaEntity, SensorEntity):

@@ -4,12 +4,17 @@
 
 from __future__ import annotations
 
+import logging
+from collections.abc import Callable
+
 from gardena_smart_local_api.devices.device import Device
 from gardena_smart_local_api.messages import EgressMessageList, Reply
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers.entity import Entity
+from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
@@ -25,6 +30,13 @@ from .const import (
 )
 from .coordinator import COMMAND_REPLY_TIMEOUT, GardenaSmartLocalCoordinator
 
+_LOGGER = logging.getLogger(__name__)
+
+# Builds the entities one device provides on a platform, keyed by a name that is
+# unique per device on that platform (e.g. "temperature" or "valve_0"). The
+# values create the entity, so only entities that are actually new get built.
+type EntityFactories = dict[str, Callable[[], Entity]]
+
 
 def find_device_subentry_id(entry: ConfigEntry, device_id: str) -> str | None:
     return next(
@@ -35,6 +47,42 @@ def find_device_subentry_id(entry: ConfigEntry, device_id: str) -> str | None:
         ),
         None,
     )
+
+
+@callback
+def async_setup_device_entities(
+    entry: ConfigEntry,
+    coordinator: GardenaSmartLocalCoordinator,
+    async_add_entities: AddConfigEntryEntitiesCallback,
+    entities_for_device: Callable[[Device], EntityFactories],
+) -> None:
+    known: set[tuple[str, str]] = set()
+
+    @callback
+    def _add_new_entities() -> None:
+        current: dict[tuple[str, str], Callable[[], Entity]] = {}
+        for device in (coordinator.data or {}).values():
+            for name, factory in entities_for_device(device).items():
+                current[(device.id, name)] = factory
+
+        # Forget entities whose device (or valve) is gone, also when no device
+        # is left at all, so a device that is included again gets its entities
+        # back.
+        known.intersection_update(current)
+
+        entities_by_subentry_id: dict[str | None, list[Entity]] = {}
+        for (device_id, name), factory in current.items():
+            if (device_id, name) in known:
+                continue
+            known.add((device_id, name))
+            sid = find_device_subentry_id(entry, device_id)
+            entities_by_subentry_id.setdefault(sid, []).append(factory())
+            _LOGGER.info("Adding %s entity for device %s", name, device_id)
+        for sid, entities in entities_by_subentry_id.items():
+            async_add_entities(entities, config_subentry_id=sid)
+
+    entry.async_on_unload(coordinator.async_add_listener(_add_new_entities))
+    _add_new_entities()
 
 
 def get_valve_duration_minutes(

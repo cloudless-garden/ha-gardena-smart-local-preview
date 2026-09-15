@@ -5,10 +5,12 @@
 from __future__ import annotations
 
 import logging
+from functools import partial
 from typing import Any
 
 import voluptuous as vol
 from gardena_smart_local_api.devices import PowerAdapter, Pump
+from gardena_smart_local_api.devices.device import Device
 from homeassistant.components.switch import SwitchDeviceClass, SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -17,8 +19,9 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .coordinator import GardenaSmartLocalCoordinator
 from .entity import (
+    EntityFactories,
     GardenaEntity,
-    find_device_subentry_id,
+    async_setup_device_entities,
     get_power_duration_minutes,
     get_pump_duration_minutes,
 )
@@ -39,7 +42,6 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     coordinator: GardenaSmartLocalCoordinator = entry.runtime_data
-    known_devices: set[str] = set()
 
     platform = entity_platform.async_get_current_platform()
     platform.async_register_entity_service(
@@ -64,31 +66,17 @@ async def async_setup_entry(
         "async_turn_on_for",
     )
 
-    def _add_new_devices() -> None:
-        if not coordinator.data:
-            return
-        known_devices.intersection_update(coordinator.data)
-        entities_by_subentry_id: dict[str | None, list] = {}
-        for device in coordinator.data.values():
-            if isinstance(device, PowerAdapter) and device.id not in known_devices:
-                known_devices.add(device.id)
-                sid = find_device_subentry_id(entry, device.id)
-                entities_by_subentry_id.setdefault(sid, []).append(
-                    GardenaPowerSwitch(coordinator, entry, device)
-                )
-                _LOGGER.info("Adding new switch entity for device %s", device.id)
-            elif isinstance(device, Pump) and device.id not in known_devices:
-                known_devices.add(device.id)
-                sid = find_device_subentry_id(entry, device.id)
-                entities_by_subentry_id.setdefault(sid, []).append(
-                    GardenaPumpSwitch(coordinator, entry, device)
-                )
-                _LOGGER.info("Adding new pump switch entity for device %s", device.id)
-        for sid, entities in entities_by_subentry_id.items():
-            async_add_entities(entities, config_subentry_id=sid)
+    def _entities_for_device(device: Device) -> EntityFactories:
+        entities: EntityFactories = {}
+        if isinstance(device, PowerAdapter):
+            entities["power"] = partial(GardenaPowerSwitch, coordinator, entry, device)
+        elif isinstance(device, Pump):
+            entities["pump"] = partial(GardenaPumpSwitch, coordinator, entry, device)
+        return entities
 
-    entry.async_on_unload(coordinator.async_add_listener(_add_new_devices))
-    _add_new_devices()
+    async_setup_device_entities(
+        entry, coordinator, async_add_entities, _entities_for_device
+    )
 
 
 class GardenaPowerSwitch(GardenaEntity, SwitchEntity):
