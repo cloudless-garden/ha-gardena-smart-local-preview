@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import logging
+from functools import partial
 from typing import Any
 
 import voluptuous as vol
@@ -17,8 +18,9 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .coordinator import GardenaSmartLocalCoordinator
 from .entity import (
+    EntityFactories,
     GardenaEntity,
-    find_device_subentry_id,
+    async_setup_device_entities,
     get_valve_duration_minutes,
 )
 
@@ -35,7 +37,6 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     coordinator: GardenaSmartLocalCoordinator = entry.runtime_data
-    known_valves: set[tuple[str, int]] = set()
 
     platform = entity_platform.async_get_current_platform()
     platform.async_register_entity_service(
@@ -48,38 +49,17 @@ async def async_setup_entry(
         "async_open_valve_for",
     )
 
-    def _add_new_devices() -> None:
-        if not coordinator.data:
-            return
-        known_valves.intersection_update(
-            (device.id, valve_id)
-            for device in coordinator.data.values()
-            if hasattr(device, "valve_ids")
-            for valve_id in device.valve_ids
-        )
-        entities_by_subentry_id: dict[str | None, list] = {}
-        for device in coordinator.data.values():
-            if not hasattr(device, "valve_ids"):
-                continue
-            sid = find_device_subentry_id(entry, device.id)
-            for valve_id in device.valve_ids:
-                key = (device.id, valve_id)
-                if key in known_valves:
-                    continue
-                known_valves.add(key)
-                entities_by_subentry_id.setdefault(sid, []).append(
-                    GardenaValve(coordinator, entry, device, valve_id)
-                )
-                _LOGGER.info(
-                    "Adding new valve entity for device %s, valve %s",
-                    device.id,
-                    valve_id,
-                )
-        for sid, entities in entities_by_subentry_id.items():
-            async_add_entities(entities, config_subentry_id=sid)
+    def _entities_for_device(device: Device) -> EntityFactories:
+        entities: EntityFactories = {}
+        for valve_id in getattr(device, "valve_ids", []):
+            entities[f"valve_{valve_id}"] = partial(
+                GardenaValve, coordinator, entry, device, valve_id
+            )
+        return entities
 
-    entry.async_on_unload(coordinator.async_add_listener(_add_new_devices))
-    _add_new_devices()
+    async_setup_device_entities(
+        entry, coordinator, async_add_entities, _entities_for_device
+    )
 
 
 class GardenaValve(GardenaEntity, ValveEntity):

@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import logging
+from functools import partial
 
 from gardena_smart_local_api.devices import PowerAdapter, Pump
 from gardena_smart_local_api.devices.device import Device
@@ -14,15 +15,15 @@ from homeassistant.const import EntityCategory, UnitOfPressure, UnitOfTime
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from .const import DEFAULT_VALVE_DURATION_MINUTES
 from .coordinator import GardenaSmartLocalCoordinator
 from .entity import (
+    EntityFactories,
     GardenaEntity,
     async_set_mower_duration_hours,
     async_set_power_duration_minutes,
     async_set_pump_duration_minutes,
     async_set_valve_duration_minutes,
-    find_device_subentry_id,
+    async_setup_device_entities,
     get_mower_duration_hours,
     get_power_duration_minutes,
     get_pump_duration_minutes,
@@ -42,100 +43,38 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     coordinator: GardenaSmartLocalCoordinator = entry.runtime_data
-    known_devices: set[str] = set()
-    known_button_time_valves: set[tuple[str, int]] = set()
-    known_valves: set[tuple[str, int]] = set()
 
-    def _add_new_devices() -> None:
-        if not coordinator.data:
-            return
-        known_devices.intersection_update(coordinator.data)
-        known_button_time_valves.intersection_update(
-            (device.id, valve_id)
-            for device in coordinator.data.values()
-            if hasattr(device, "build_set_button_config_time_obj")
-            for valve_id in device.valve_ids
-        )
+    def _entities_for_device(device: Device) -> EntityFactories:
+        entities: EntityFactories = {}
+        if hasattr(device, "build_set_button_config_time_obj"):
+            for valve_id in device.valve_ids:
+                entities[f"button_watering_duration_{valve_id}"] = partial(
+                    GardenaButtonConfigTime, coordinator, device, valve_id
+                )
+        elif isinstance(device, Pump):
+            entities["turn_on_pressure"] = partial(
+                GardenaPumpTurnOnPressure, coordinator, device
+            )
+            entities["pump_duration"] = partial(
+                GardenaPumpDuration, coordinator, entry, device
+            )
+        elif isinstance(device, PowerAdapter):
+            entities["power_duration"] = partial(
+                GardenaPowerDuration, coordinator, entry, device
+            )
+        elif hasattr(device, "build_start_mowing_obj"):
+            entities["mower_duration"] = partial(
+                GardenaMowerDuration, coordinator, entry, device
+            )
+        for valve_id in getattr(device, "valve_ids", []):
+            entities[f"valve_duration_{valve_id}"] = partial(
+                GardenaValveDuration, coordinator, entry, device, valve_id
+            )
+        return entities
 
-        current_valves: set[tuple[str, int]] = set()
-        for device in coordinator.data.values():
-            for valve_id in getattr(device, "valve_ids", []):
-                current_valves.add((device.id, valve_id))
-        known_valves.intersection_update(current_valves)
-
-        entities_by_subentry_id: dict[str | None, list] = {}
-        for device in coordinator.data.values():
-            if hasattr(device, "build_set_button_config_time_obj"):
-                sid = find_device_subentry_id(entry, device.id)
-                for valve_id in device.valve_ids:
-                    key = (device.id, valve_id)
-                    if key in known_button_time_valves:
-                        continue
-                    known_button_time_valves.add(key)
-                    entities_by_subentry_id.setdefault(sid, []).append(
-                        GardenaButtonConfigTime(coordinator, device, valve_id)
-                    )
-                    _LOGGER.info(
-                        "Adding new button config time entity for device %s, valve %s",
-                        device.id,
-                        valve_id,
-                    )
-            elif isinstance(device, Pump) and device.id not in known_devices:
-                known_devices.add(device.id)
-                sid = find_device_subentry_id(entry, device.id)
-                entities_by_subentry_id.setdefault(sid, []).append(
-                    GardenaPumpTurnOnPressure(coordinator, device)
-                )
-                entities_by_subentry_id.setdefault(sid, []).append(
-                    GardenaPumpDuration(coordinator, entry, device)
-                )
-                _LOGGER.info("Adding new pump number entities for device %s", device.id)
-            elif isinstance(device, PowerAdapter) and device.id not in known_devices:
-                known_devices.add(device.id)
-                sid = find_device_subentry_id(entry, device.id)
-                entities_by_subentry_id.setdefault(sid, []).append(
-                    GardenaPowerDuration(coordinator, entry, device)
-                )
-                _LOGGER.info(
-                    "Adding new power outlet duration entity for device %s", device.id
-                )
-            elif (
-                hasattr(device, "build_start_mowing_obj")
-                and device.id not in known_devices
-            ):
-                known_devices.add(device.id)
-                sid = find_device_subentry_id(entry, device.id)
-                entities_by_subentry_id.setdefault(sid, []).append(
-                    GardenaMowerDuration(coordinator, entry, device)
-                )
-                _LOGGER.info(
-                    "Adding new mower duration entity for device %s", device.id
-                )
-
-            new_valve_ids: list[int] = []
-            for valve_id in getattr(device, "valve_ids", []):
-                if (device.id, valve_id) not in known_valves:
-                    new_valve_ids.append(valve_id)
-
-            if new_valve_ids:
-                sid = find_device_subentry_id(entry, device.id)
-                for valve_id in new_valve_ids:
-                    known_valves.add((device.id, valve_id))
-                    entities_by_subentry_id.setdefault(sid, []).append(
-                        GardenaValveDuration(coordinator, entry, device, valve_id)
-                    )
-                    _LOGGER.info(
-                        "Adding new valve duration entity for device %s, valve %s, "
-                        "default duration=%s minutes",
-                        device.id,
-                        valve_id,
-                        DEFAULT_VALVE_DURATION_MINUTES,
-                    )
-        for sid, entities in entities_by_subentry_id.items():
-            async_add_entities(entities, config_subentry_id=sid)
-
-    entry.async_on_unload(coordinator.async_add_listener(_add_new_devices))
-    _add_new_devices()
+    async_setup_device_entities(
+        entry, coordinator, async_add_entities, _entities_for_device
+    )
 
 
 class GardenaButtonConfigTime(GardenaEntity, NumberEntity):

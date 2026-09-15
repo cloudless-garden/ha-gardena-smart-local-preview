@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import logging
+from functools import partial
 
 from gardena_smart_local_api.devices import Pump
 from gardena_smart_local_api.devices.device import Device
@@ -15,7 +16,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .coordinator import GardenaSmartLocalCoordinator
-from .entity import GardenaEntity, find_device_subentry_id
+from .entity import EntityFactories, GardenaEntity, async_setup_device_entities
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -30,51 +31,30 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     coordinator: GardenaSmartLocalCoordinator = entry.runtime_data
-    known_devices: set[str] = set()
-    known_pump_devices: set[str] = set()
-    known_schedule_devices: set[str] = set()
 
-    def _add_new_devices() -> None:
-        if not coordinator.data:
-            return
-        known_devices.intersection_update(coordinator.data)
-        known_pump_devices.intersection_update(coordinator.data)
-        known_schedule_devices.intersection_update(coordinator.data)
-        entities_by_subentry_id: dict[str | None, list] = {}
-        for device in coordinator.data.values():
-            if hasattr(device, "build_identify_obj") and device.id not in known_devices:
-                known_devices.add(device.id)
-                sid = find_device_subentry_id(entry, device.id)
-                entities_by_subentry_id.setdefault(sid, []).append(
-                    GardenaIdentifyButton(coordinator, device)
-                )
-                _LOGGER.info("Adding identify button for device %s", device.id)
-            if isinstance(device, Pump) and device.id not in known_pump_devices:
-                known_pump_devices.add(device.id)
-                sid = find_device_subentry_id(entry, device.id)
-                entities_by_subentry_id.setdefault(sid, []).extend(
-                    [
-                        GardenaPumpResetFlowButton(coordinator, device),
-                        GardenaPumpResetValveErrorsButton(coordinator, device),
-                        GardenaPumpResetTemperatureMinMaxButton(coordinator, device),
-                    ]
-                )
-                _LOGGER.info("Adding pump reset buttons for device %s", device.id)
-            if (
-                hasattr(device, "schedule_count")
-                and device.id not in known_schedule_devices
-            ):
-                known_schedule_devices.add(device.id)
-                sid = find_device_subentry_id(entry, device.id)
-                entities_by_subentry_id.setdefault(sid, []).append(
-                    GardenaClearSchedulesButton(coordinator, device)
-                )
-                _LOGGER.info("Adding clear schedules button for device %s", device.id)
-        for sid, entities in entities_by_subentry_id.items():
-            async_add_entities(entities, config_subentry_id=sid)
+    def _entities_for_device(device: Device) -> EntityFactories:
+        entities: EntityFactories = {}
+        if hasattr(device, "build_identify_obj"):
+            entities["identify"] = partial(GardenaIdentifyButton, coordinator, device)
+        if isinstance(device, Pump):
+            entities["reset_flow"] = partial(
+                GardenaPumpResetFlowButton, coordinator, device
+            )
+            entities["reset_valve_errors"] = partial(
+                GardenaPumpResetValveErrorsButton, coordinator, device
+            )
+            entities["reset_temperature_min_max"] = partial(
+                GardenaPumpResetTemperatureMinMaxButton, coordinator, device
+            )
+        if hasattr(device, "schedule_count"):
+            entities["clear_schedules"] = partial(
+                GardenaClearSchedulesButton, coordinator, device
+            )
+        return entities
 
-    entry.async_on_unload(coordinator.async_add_listener(_add_new_devices))
-    _add_new_devices()
+    async_setup_device_entities(
+        entry, coordinator, async_add_entities, _entities_for_device
+    )
 
 
 class GardenaIdentifyButton(GardenaEntity, ButtonEntity):

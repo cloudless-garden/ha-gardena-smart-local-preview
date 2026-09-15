@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import logging
+from functools import partial
 
 from gardena_smart_local_api.devices import Device, MowerState
 from homeassistant.components.lawn_mower import (
@@ -20,8 +21,9 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .coordinator import GardenaSmartLocalCoordinator
 from .entity import (
+    EntityFactories,
     GardenaEntity,
-    find_device_subentry_id,
+    async_setup_device_entities,
     get_mower_duration_hours,
 )
 
@@ -38,29 +40,16 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     coordinator: GardenaSmartLocalCoordinator = entry.runtime_data
-    known_devices: set[str] = set()
 
-    def _add_new_devices() -> None:
-        if not coordinator.data:
-            return
-        known_devices.intersection_update(coordinator.data)
-        entities_by_subentry_id: dict[str | None, list] = {}
-        for device in coordinator.data.values():
-            if (
-                hasattr(device, "build_start_mowing_obj")
-                and device.id not in known_devices
-            ):
-                known_devices.add(device.id)
-                sid = find_device_subentry_id(entry, device.id)
-                entities_by_subentry_id.setdefault(sid, []).append(
-                    GardenaMower(coordinator, entry, device)
-                )
-                _LOGGER.info("Adding new mower entity for device %s", device.id)
-        for sid, entities in entities_by_subentry_id.items():
-            async_add_entities(entities, config_subentry_id=sid)
+    def _entities_for_device(device: Device) -> EntityFactories:
+        entities: EntityFactories = {}
+        if hasattr(device, "build_start_mowing_obj"):
+            entities["mower"] = partial(GardenaMower, coordinator, entry, device)
+        return entities
 
-    entry.async_on_unload(coordinator.async_add_listener(_add_new_devices))
-    _add_new_devices()
+    async_setup_device_entities(
+        entry, coordinator, async_add_entities, _entities_for_device
+    )
 
 
 class GardenaMower(GardenaEntity, LawnMowerEntity):

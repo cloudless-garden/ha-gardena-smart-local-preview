@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import logging
+from functools import partial
 from typing import Any
 
 from gardena_smart_local_api.devices.device import Device, FirmwareUpdateState
@@ -19,7 +20,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .coordinator import GardenaSmartLocalCoordinator
-from .entity import GardenaEntity, find_device_subentry_id
+from .entity import EntityFactories, GardenaEntity, async_setup_device_entities
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -32,27 +33,13 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     coordinator: GardenaSmartLocalCoordinator = entry.runtime_data
-    known_devices: set[str] = set()
 
-    def _add_new_devices() -> None:
-        if not coordinator.data:
-            return
-        known_devices.intersection_update(coordinator.data)
-        entities_by_subentry_id: dict[str | None, list] = {}
-        for device in coordinator.data.values():
-            if device.id in known_devices:
-                continue
-            known_devices.add(device.id)
-            sid = find_device_subentry_id(entry, device.id)
-            entities_by_subentry_id.setdefault(sid, []).append(
-                GardenaFirmwareUpdate(coordinator, device)
-            )
-            _LOGGER.info("Adding firmware update entity for device %s", device.id)
-        for sid, entities in entities_by_subentry_id.items():
-            async_add_entities(entities, config_subentry_id=sid)
+    def _entities_for_device(device: Device) -> EntityFactories:
+        return {"firmware_update": partial(GardenaFirmwareUpdate, coordinator, device)}
 
-    entry.async_on_unload(coordinator.async_add_listener(_add_new_devices))
-    _add_new_devices()
+    async_setup_device_entities(
+        entry, coordinator, async_add_entities, _entities_for_device
+    )
 
 
 class GardenaFirmwareUpdate(GardenaEntity, UpdateEntity):
