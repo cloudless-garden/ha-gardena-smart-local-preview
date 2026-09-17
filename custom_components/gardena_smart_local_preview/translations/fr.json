@@ -156,6 +156,16 @@
           "description": "Durée de fonctionnement de la pompe, en secondes (60-5400). Utilise la durée configurée de la pompe si omis."
         }
       }
+    },
+    "start_mowing": {
+      "name": "Démarrer la tonte",
+      "description": "Démarre la tonte pendant une durée déterminée, en remplaçant éventuellement la durée configurée.",
+      "fields": {
+        "duration": {
+          "name": "Durée",
+          "description": "Durée de la tonte, en heures entières (1-6). Utilise la durée configurée pour l'entité si omis."
+        }
+      }
     }
   },
   "issues": {

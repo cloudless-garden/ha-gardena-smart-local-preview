@@ -166,6 +166,16 @@
           "description": "Wie lange die Pumpe läuft, in Sekunden (60-5400). Ohne Angabe wird die konfigurierte Dauer der Pumpe verwendet."
         }
       }
+    },
+    "start_mowing": {
+      "name": "Mähen starten",
+      "description": "Startet den Mähvorgang für eine feste Dauer, optional abweichend von der konfigurierten Dauer.",
+      "fields": {
+        "duration": {
+          "name": "Dauer",
+          "description": "Wie lange gemäht wird, in ganzen Stunden (1-6). Ohne Angabe wird die für die Entität konfigurierte Dauer verwendet."
+        }
+      }
     }
   },
   "issues": {
