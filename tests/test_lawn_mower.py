@@ -44,6 +44,21 @@ async def test_start_mowing_uses_configured_duration(
     mock_device.build_start_mowing_obj.assert_called_once_with(7200)
 
 
+async def test_start_mowing_for_uses_override_duration(
+    coordinator: MagicMock,
+    entry: MagicMock,
+    mock_device: MagicMock,
+    subentry: MagicMock,
+) -> None:
+    """An explicit duration overrides the configured default for one call."""
+    subentry.data[CONF_MOWER_DURATION] = 2
+    mower = GardenaMower(coordinator, entry, mock_device)
+
+    await mower.async_start_mowing_for(duration=4)
+
+    mock_device.build_start_mowing_obj.assert_called_once_with(4 * 3600)
+
+
 async def test_dock_stops_mowing(
     coordinator: MagicMock, entry: MagicMock, mock_device: MagicMock
 ) -> None:

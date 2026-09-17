@@ -48,3 +48,19 @@ start_pump:
           max: 5400
           unit_of_measurement: s
           mode: box
+
+start_mowing:
+  target:
+    entity:
+      integration: gardena_smart_local_preview
+      domain: lawn_mower
+  fields:
+    duration:
+      required: false
+      example: 2
+      selector:
+        number:
+          min: 1
+          max: 6
+          unit_of_measurement: h
+          mode: box

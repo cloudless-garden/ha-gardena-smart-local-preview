@@ -166,6 +166,16 @@
           "description": "How long to run the pump, in seconds (60-5400). Defaults to the pump's configured duration if omitted."
         }
       }
+    },
+    "start_mowing": {
+      "name": "Start mowing",
+      "description": "Starts mowing for a fixed duration, optionally overriding the configured default duration for this call only.",
+      "fields": {
+        "duration": {
+          "name": "Duration",
+          "description": "How long to mow, in whole hours (1-6). Defaults to the entity's configured duration if omitted."
+        }
+      }
     }
   },
   "issues": {

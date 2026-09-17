@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 from functools import partial
 
+import voluptuous as vol
 from gardena_smart_local_api.devices import Device, MowerState
 from homeassistant.components.lawn_mower import (
     LawnMowerActivity,
@@ -17,6 +18,7 @@ from homeassistant.components.lawn_mower import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_platform
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .coordinator import GardenaSmartLocalCoordinator
@@ -40,6 +42,17 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     coordinator: GardenaSmartLocalCoordinator = entry.runtime_data
+
+    platform = entity_platform.async_get_current_platform()
+    platform.async_register_entity_service(
+        "start_mowing",
+        {
+            # Whole hours, matching the Default Mowing Duration number entity
+            # and the range the GARDENA app offers for a manual start.
+            vol.Optional("duration"): vol.All(vol.Coerce(int), vol.Range(min=1, max=6))
+        },
+        "async_start_mowing_for",
+    )
 
     def _entities_for_device(device: Device) -> EntityFactories:
         entities: EntityFactories = {}
@@ -97,7 +110,14 @@ class GardenaMower(GardenaEntity, LawnMowerEntity):
         return None
 
     async def async_start_mowing(self) -> None:
-        hours = get_mower_duration_hours(self._entry, self._device.id)
+        await self.async_start_mowing_for()
+
+    async def async_start_mowing_for(self, duration: int | None = None) -> None:
+        hours = (
+            duration
+            if duration is not None
+            else get_mower_duration_hours(self._entry, self._device.id)
+        )
         await self._send_confirmed_command(
             self._device.build_start_mowing_obj(hours * 3600)
         )
