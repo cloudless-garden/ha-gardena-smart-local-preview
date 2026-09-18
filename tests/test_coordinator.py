@@ -22,22 +22,19 @@ def coordinator(hass: HomeAssistant) -> GardenaSmartLocalCoordinator:
     return GardenaSmartLocalCoordinator(hass, "192.168.1.100", 8443, "testpassword")
 
 
-def test_schedule_unknown_device_discovery_reschedules_on_burst(
+def test_schedule_unknown_device_discovery_collapses_burst(
     coordinator: GardenaSmartLocalCoordinator,
 ) -> None:
     """A burst of events collapses into a single pending re-discovery."""
-    first_handle = MagicMock()
-    second_handle = MagicMock()
-    coordinator.hass.loop.call_later = MagicMock(
-        side_effect=[first_handle, second_handle]
-    )
+    handle = MagicMock()
+    coordinator.hass.loop.call_later = MagicMock(return_value=handle)
 
     coordinator._schedule_unknown_device_discovery("dev-1")
     coordinator._schedule_unknown_device_discovery("dev-2")
 
-    first_handle.cancel.assert_called_once()
-    second_handle.cancel.assert_not_called()
-    assert coordinator._unknown_device_discovery_handle is second_handle
+    coordinator.hass.loop.call_later.assert_called_once()
+    handle.cancel.assert_not_called()
+    assert coordinator._unknown_device_discovery_handle is handle
 
 
 async def test_discover_unknown_devices_runs_full_discovery(
