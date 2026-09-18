@@ -6,7 +6,7 @@ import logging
 from types import MappingProxyType
 
 import homeassistant.helpers.config_validation as cv
-import voluptuous as vol
+import probatio
 from homeassistant.config_entries import (
     SIGNAL_CONFIG_ENTRY_CHANGED,
     SOURCE_IMPORT,
@@ -44,17 +44,17 @@ PLATFORMS: list[Platform] = [
 ]
 _LOGGER = logging.getLogger(__name__)
 
-CONFIG_SCHEMA = vol.Schema(
+CONFIG_SCHEMA = probatio.Schema(
     {
-        DOMAIN: vol.Schema(
+        DOMAIN: probatio.Schema(
             {
-                vol.Required(CONF_HOST): cv.string,
-                vol.Optional(CONF_PORT, default=DEFAULT_PORT): cv.port,
-                vol.Optional(CONF_PASSWORD, default=""): cv.string,
+                probatio.Required(CONF_HOST): cv.string,
+                probatio.Optional(CONF_PORT, default=DEFAULT_PORT): cv.port,
+                probatio.Optional(CONF_PASSWORD, default=""): cv.string,
             }
         )
     },
-    extra=vol.ALLOW_EXTRA,
+    extra=probatio.ALLOW_EXTRA,
 )
 
 
