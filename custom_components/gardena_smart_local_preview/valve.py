@@ -8,7 +8,7 @@ import logging
 from functools import partial
 from typing import Any
 
-import voluptuous as vol
+import probatio
 from gardena_smart_local_api.devices import Device
 from homeassistant.components.valve import ValveEntity, ValveEntityFeature
 from homeassistant.config_entries import ConfigEntry
@@ -42,8 +42,8 @@ async def async_setup_entry(
     platform.async_register_entity_service(
         "open_valve",
         {
-            vol.Optional("duration"): vol.All(
-                vol.Coerce(int), vol.Range(min=60, max=10800)
+            probatio.Optional("duration"): probatio.All(
+                probatio.Coerce(int), probatio.Range(min=60, max=10800)
             )
         },
         "async_open_valve_for",
