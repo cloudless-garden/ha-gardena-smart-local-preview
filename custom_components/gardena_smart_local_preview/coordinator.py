@@ -536,8 +536,13 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
     async def async_exclude_device(self, device_id: str) -> bool:
         device = self._devices.get(device_id)
         if device is None:
-            _LOGGER.error("No device with id %s", device_id)
-            return False
+            # A delete event or a fresh discovery already removed it, e.g.
+            # excluded through the official app; nothing left to reject.
+            _LOGGER.debug(
+                "Device %s already absent, treating exclusion as successful",
+                device_id,
+            )
+            return True
 
         request = device.build_exclusion_obj()
         # Drop the device locally before requesting exclusion so the inbound
