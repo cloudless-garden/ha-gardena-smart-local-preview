@@ -17,6 +17,7 @@ from homeassistant.config_entries import (
 )
 from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_PORT
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
 from homeassistant.helpers.typing import ConfigType
@@ -77,7 +78,7 @@ class GardenaSmartLocalConfigFlow(ConfigFlow, domain=DOMAIN):
             data_schema=vol.Schema(
                 {
                     vol.Required(CONF_HOST): _HOST,
-                    vol.Optional(CONF_PORT, default=DEFAULT_PORT): int,
+                    vol.Optional(CONF_PORT, default=DEFAULT_PORT): cv.port,
                     vol.Optional(CONF_PASSWORD, default=""): str,
                 }
             ),
@@ -128,7 +129,7 @@ class GardenaSmartLocalConfigFlow(ConfigFlow, domain=DOMAIN):
             data_schema=vol.Schema(
                 {
                     vol.Required(CONF_HOST, default=self._discovered_host): _HOST,
-                    vol.Optional(CONF_PORT, default=self._discovered_port): int,
+                    vol.Optional(CONF_PORT, default=self._discovered_port): cv.port,
                     vol.Optional(CONF_PASSWORD, default=""): str,
                 }
             ),
@@ -169,7 +170,7 @@ class GardenaSmartLocalConfigFlow(ConfigFlow, domain=DOMAIN):
                     ): _HOST,
                     vol.Optional(
                         CONF_PORT, default=entry.data.get(CONF_PORT, DEFAULT_PORT)
-                    ): int,
+                    ): cv.port,
                     vol.Optional(
                         CONF_PASSWORD, default=entry.data.get(CONF_PASSWORD, "")
                     ): str,
