@@ -7,7 +7,7 @@ import base64
 import logging
 
 import aiohttp
-import voluptuous as vol
+import probatio
 from homeassistant.config_entries import (
     ConfigEntry,
     ConfigFlow,
@@ -31,8 +31,8 @@ _LOGGER = logging.getLogger(__name__)
 
 # A host pasted with surrounding whitespace is rejected by yarl; trim it in
 # one place so every step stores and connects to the clean value.
-# vol.Strip keeps the form schema serializable for the frontend.
-_HOST = vol.All(str, vol.Strip)
+# probatio.Strip keeps the form schema serializable for the frontend.
+_HOST = probatio.All(str, probatio.Strip)
 
 
 class GardenaSmartLocalConfigFlow(ConfigFlow, domain=DOMAIN):
@@ -75,11 +75,11 @@ class GardenaSmartLocalConfigFlow(ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="user",
-            data_schema=vol.Schema(
+            data_schema=probatio.Schema(
                 {
-                    vol.Required(CONF_HOST): _HOST,
-                    vol.Optional(CONF_PORT, default=DEFAULT_PORT): cv.port,
-                    vol.Optional(CONF_PASSWORD, default=""): str,
+                    probatio.Required(CONF_HOST): _HOST,
+                    probatio.Optional(CONF_PORT, default=DEFAULT_PORT): cv.port,
+                    probatio.Optional(CONF_PASSWORD, default=""): str,
                 }
             ),
             errors=errors,
@@ -126,11 +126,13 @@ class GardenaSmartLocalConfigFlow(ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="discovery_confirm",
-            data_schema=vol.Schema(
+            data_schema=probatio.Schema(
                 {
-                    vol.Required(CONF_HOST, default=self._discovered_host): _HOST,
-                    vol.Optional(CONF_PORT, default=self._discovered_port): cv.port,
-                    vol.Optional(CONF_PASSWORD, default=""): str,
+                    probatio.Required(CONF_HOST, default=self._discovered_host): _HOST,
+                    probatio.Optional(
+                        CONF_PORT, default=self._discovered_port
+                    ): cv.port,
+                    probatio.Optional(CONF_PASSWORD, default=""): str,
                 }
             ),
             description_placeholders={
@@ -163,15 +165,15 @@ class GardenaSmartLocalConfigFlow(ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="reconfigure",
-            data_schema=vol.Schema(
+            data_schema=probatio.Schema(
                 {
-                    vol.Required(
+                    probatio.Required(
                         CONF_HOST, default=entry.data.get(CONF_HOST, "")
                     ): _HOST,
-                    vol.Optional(
+                    probatio.Optional(
                         CONF_PORT, default=entry.data.get(CONF_PORT, DEFAULT_PORT)
                     ): cv.port,
-                    vol.Optional(
+                    probatio.Optional(
                         CONF_PASSWORD, default=entry.data.get(CONF_PASSWORD, "")
                     ): str,
                 }
@@ -235,7 +237,7 @@ class GardenaInclusionSubentryFlow(ConfigSubentryFlow):
 
         return self.async_show_form(
             step_id="user",
-            data_schema=vol.Schema({}),
+            data_schema=probatio.Schema({}),
             last_step=False,
         )
 
@@ -270,6 +272,8 @@ class GardenaInclusionSubentryFlow(ConfigSubentryFlow):
 
         return self.async_show_form(
             step_id="select",
-            data_schema=vol.Schema({vol.Required("device"): vol.In(devices)}),
+            data_schema=probatio.Schema(
+                {probatio.Required("device"): probatio.In(devices)}
+            ),
             errors=errors,
         )
