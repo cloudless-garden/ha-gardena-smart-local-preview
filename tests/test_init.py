@@ -17,7 +17,9 @@ from custom_components.gardena_smart_local_preview import (
 from custom_components.gardena_smart_local_preview.const import DOMAIN
 
 
-async def test_exclude_success_creates_no_issue(hass: HomeAssistant) -> None:
+async def test_exclude_success_creates_no_issue(
+    hass: HomeAssistant, issue_registry: ir.IssueRegistry
+) -> None:
     """A confirmed exclusion does not warn the user."""
     coordinator = MagicMock()
     coordinator.async_exclude_device = AsyncMock(return_value=True)
@@ -25,30 +27,34 @@ async def test_exclude_success_creates_no_issue(hass: HomeAssistant) -> None:
     await _async_exclude_and_report_failure(hass, coordinator, "dev-1")
 
     coordinator.async_exclude_device.assert_awaited_once_with("dev-1")
-    assert ir.async_get(hass).async_get_issue(DOMAIN, "exclude_failed_dev-1") is None
+    assert issue_registry.async_get_issue(DOMAIN, "exclude_failed_dev-1") is None
 
 
-async def test_exclude_failure_creates_repair_issue(hass: HomeAssistant) -> None:
+async def test_exclude_failure_creates_repair_issue(
+    hass: HomeAssistant, issue_registry: ir.IssueRegistry
+) -> None:
     """A gateway that does not confirm exclusion is surfaced to the user."""
     coordinator = MagicMock()
     coordinator.async_exclude_device = AsyncMock(return_value=False)
 
     await _async_exclude_and_report_failure(hass, coordinator, "dev-1")
 
-    issue = ir.async_get(hass).async_get_issue(DOMAIN, "exclude_failed_dev-1")
+    issue = issue_registry.async_get_issue(DOMAIN, "exclude_failed_dev-1")
     assert issue is not None
     assert issue.translation_key == "exclude_failed"
     assert issue.translation_placeholders == {"device_id": "dev-1"}
 
 
-async def test_exclude_retry_success_clears_issue(hass: HomeAssistant) -> None:
+async def test_exclude_retry_success_clears_issue(
+    hass: HomeAssistant, issue_registry: ir.IssueRegistry
+) -> None:
     """Removing a still-paired device again resolves the earlier warning."""
     coordinator = MagicMock()
     coordinator.async_exclude_device = AsyncMock(return_value=False)
     await _async_exclude_and_report_failure(hass, coordinator, "dev-1")
-    assert ir.async_get(hass).async_get_issue(DOMAIN, "exclude_failed_dev-1")
+    assert issue_registry.async_get_issue(DOMAIN, "exclude_failed_dev-1")
 
     coordinator.async_exclude_device = AsyncMock(return_value=True)
     await _async_exclude_and_report_failure(hass, coordinator, "dev-1")
 
-    assert ir.async_get(hass).async_get_issue(DOMAIN, "exclude_failed_dev-1") is None
+    assert issue_registry.async_get_issue(DOMAIN, "exclude_failed_dev-1") is None
