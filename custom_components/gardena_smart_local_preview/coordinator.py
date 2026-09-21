@@ -17,6 +17,7 @@ from gardena_smart_local_api.devices import (
 )
 from gardena_smart_local_api.messages import (
     EgressMessageList,
+    ErrorMessage,
     Event,
     IngressMessageList,
     Reply,
@@ -273,7 +274,7 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
                 passthrough: IngressMessageList = IngressMessageList([])
                 for msg in messages:
                     if (
-                        isinstance(msg, Reply)
+                        isinstance(msg, (Reply, ErrorMessage))
                         and msg.request_id in self._pending_replies
                     ):
                         fut = self._pending_replies.pop(msg.request_id)
@@ -494,6 +495,13 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
             return None
 
         for msg in replies:
+            if isinstance(msg, ErrorMessage):
+                _LOGGER.error(
+                    "Inclusion of device %s rejected: %s",
+                    info.device_id,
+                    msg.error_message,
+                )
+                return None
             if isinstance(msg, Reply) and msg.success:
                 for _ in range(INCLUSION_TIMEOUT):
                     if instance_id not in self._includable_devices:
@@ -556,6 +564,13 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
             return False
 
         for msg in replies:
+            if isinstance(msg, ErrorMessage):
+                _LOGGER.error(
+                    "Exclusion of device %s rejected: %s",
+                    device_id,
+                    msg.error_message,
+                )
+                return False
             if isinstance(msg, Reply) and msg.success:
                 _LOGGER.info("Device %s excluded successfully", device_id)
                 return True
