@@ -214,7 +214,7 @@ async def _async_try_connect(
             return "invalid_auth"
         _LOGGER.debug("Handshake error connecting to %s:%s", host, port, exc_info=True)
         return "cannot_connect"
-    except (aiohttp.ClientConnectionError, TimeoutError, OSError):
+    except aiohttp.ClientConnectionError, TimeoutError, OSError:
         _LOGGER.debug("Error connecting to %s:%s", host, port, exc_info=True)
         return "cannot_connect"
     except ValueError:
