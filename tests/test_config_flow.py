@@ -15,6 +15,7 @@ import voluptuous_serialize
 from homeassistant.config_entries import SOURCE_IMPORT, SOURCE_USER, SOURCE_ZEROCONF
 from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_PORT
 from homeassistant.core import HomeAssistant
+from homeassistant.data_entry_flow import InvalidData
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -200,6 +201,19 @@ async def test_user_flow_invalid_host(hass: HomeAssistant) -> None:
 
     assert result["type"] == "form"
     assert result["errors"] == {"base": "invalid_host"}
+
+
+async def test_user_flow_rejects_out_of_range_port(hass: HomeAssistant) -> None:
+    """A port outside 1-65535 fails schema validation, not a connection attempt."""
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_USER}
+    )
+
+    with pytest.raises(InvalidData):
+        await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {CONF_HOST: MOCK_HOST, CONF_PORT: 70000, CONF_PASSWORD: MOCK_PASSWORD},
+        )
 
 
 async def test_user_flow_already_configured(hass: HomeAssistant) -> None:
