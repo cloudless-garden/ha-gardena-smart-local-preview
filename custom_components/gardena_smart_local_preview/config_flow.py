@@ -227,7 +227,7 @@ async def _async_try_connect(
             return "invalid_auth"
         _LOGGER.debug("Handshake error connecting to %s:%s", host, port, exc_info=True)
         return "cannot_connect"
-    except (aiohttp.ClientConnectionError, TimeoutError, OSError):
+    except aiohttp.ClientConnectionError, TimeoutError, OSError:
         _LOGGER.debug("Error connecting to %s:%s", host, port, exc_info=True)
         return "cannot_connect"
     except ValueError:
@@ -255,7 +255,7 @@ async def async_extract_hostname_from_cert(host: str, port: int) -> str | None:
             _, writer = await asyncio.open_connection(
                 host, port, ssl=get_default_no_verify_context()
             )
-    except (OSError, TimeoutError):
+    except OSError, TimeoutError:
         _LOGGER.debug("Could not read the certificate of %s:%s", host, port)
         return None
 
