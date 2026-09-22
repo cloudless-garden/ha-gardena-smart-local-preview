@@ -8,13 +8,14 @@
 [project]
 name = "ha-gardena-smart-local-preview"
 version = "0.0.7"
-requires-python = ">=3.13"
+requires-python = ">=3.14.2"
 
 [dependency-groups]
 dev = [
     "reuse>=6.2.0",
-    "pytest-homeassistant-custom-component>=0.13",
+    "pytest-homeassistant-custom-component>=0.13.365",
     "gardena-smart-local-api==0.2.0",
+    "probatio",
 ]
 
 [tool.pytest.ini_options]

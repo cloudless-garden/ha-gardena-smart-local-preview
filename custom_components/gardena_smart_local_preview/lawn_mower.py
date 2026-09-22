@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 from functools import partial
 
-import voluptuous as vol
+import probatio
 from gardena_smart_local_api.devices import Device, MowerState
 from homeassistant.components.lawn_mower import (
     LawnMowerActivity,
@@ -49,7 +49,9 @@ async def async_setup_entry(
         {
             # Whole hours, matching the Default Mowing Duration number entity
             # and the range the GARDENA app offers for a manual start.
-            vol.Optional("duration"): vol.All(vol.Coerce(int), vol.Range(min=1, max=6))
+            probatio.Optional("duration"): probatio.All(
+                probatio.Coerce(int), probatio.Range(min=1, max=6)
+            )
         },
         "async_start_mowing_for",
     )
