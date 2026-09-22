@@ -2085,7 +2085,7 @@ wheels = [
 
 [[package]]
 name = "ha-gardena-smart-local-preview"
-version = "0.0.7"
+version = "0.3.0"
 source = { virtual = "." }
 
 [package.dev-dependencies]
