@@ -6,13 +6,23 @@
 
 from __future__ import annotations
 
+import json
+import re
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
 
 from custom_components.gardena_smart_local_preview import mower
 from tests.common import make_gen1_mower as make_mower
+
+TRANSLATIONS = (
+    Path(__file__).parents[1]
+    / "custom_components"
+    / "gardena_smart_local_preview"
+    / "translations"
+)
 
 
 def test_is_gen1_mower_only_for_lemonbeat_mowers() -> None:
@@ -76,16 +86,46 @@ def test_last_error_timestamp_is_none_when_missing_or_zero(lemonbeat: dict) -> N
     assert mower.get_last_error_timestamp(make_mower(lemonbeat)) is None
 
 
-def test_error_code_to_state_without_table_exposes_raw_code() -> None:
+def test_error_code_to_state_exposes_unknown_codes_raw() -> None:
     assert mower.error_code_to_state(None) is None
     assert mower.error_code_to_state(0) == mower.NO_MESSAGE
-    assert mower.error_code_to_state(15) == "code_15"
+    assert mower.error_code_to_state(999) == "code_999"
 
 
-def test_error_code_to_state_uses_calibrated_table(monkeypatch) -> None:
-    monkeypatch.setitem(mower.ERROR_CODES, 15, "lifted")
+@pytest.mark.parametrize(
+    ("code", "expected"),
+    [
+        (1, "outside_working_area"),
+        (15, "lifted"),
+        (25, "cutting_system_blocked"),  # duplicate text of 24
+        (161, "no_charging_station_signal"),
+        (724, "communication_circuit_board_sw_must_be_updated"),
+    ],
+)
+def test_error_code_to_state_follows_automower_numbering(
+    code: int, expected: str
+) -> None:
+    assert mower.error_code_to_state(code) == expected
 
-    assert mower.error_code_to_state(15) == "lifted"
+
+def test_error_codes_table_is_complete_and_skips_no_error() -> None:
+    # 177 Automower codes minus 0, which is "no error" and never a state
+    assert len(mower.ERROR_CODES) == 176
+    assert 0 not in mower.ERROR_CODES
+    assert all(isinstance(code, int) for code in mower.ERROR_CODES)
+    assert all(re.fullmatch(r"[a-z0-9_]+", name) for name in mower.ERROR_CODES.values())
+
+
+@pytest.mark.parametrize("language", ["en", "de", "fr", "pl"])
+def test_every_error_state_is_translated(language: str) -> None:
+    translations = json.loads(
+        (TRANSLATIONS / f"{language}.json").read_text(encoding="utf-8")
+    )
+    states = translations["entity"]["sensor"]["last_error"]["state"]
+
+    expected = set(mower.ERROR_CODES.values()) | {mower.NO_MESSAGE}
+    assert expected <= states.keys()
+    assert all(text.strip() for text in states.values())
 
 
 @pytest.mark.parametrize(

@@ -70,11 +70,13 @@ value is kept in the `gnss_horizontal_accuracy` attribute.
 Gen1 mowers additionally get a **Problem** binary sensor (on while the mower is
 in an error state, with the active `error_codes` as attribute), a **Last error**
 sensor and lifetime counters (cutting time, running time, charging cycles,
-collisions). The mower reports errors as numbers only and the numbering is not
-documented, so unknown codes show as `code_<n>` with the number in the
-`raw_code` attribute and the time it happened in `timestamp`; `no_message`
-means no error has been recorded. Known codes are mapped in `mower.py`
-(`ERROR_CODES`) once they have been confirmed.
+collisions). The mower reports errors as numbers only. They are mapped in
+`mower.py` (`ERROR_CODES`) using the Husqvarna Automower Connect API numbering
+(as published by the `aioautomower` library, with the same state keys as Home
+Assistant's `husqvarna_automower` integration), which GARDENA has not confirmed
+for the local API; so far code 15 (`lifted`) matched a real event. Unknown codes
+show as `code_<n>`; the number is always in the `raw_code` attribute and the time
+it happened in `timestamp`. `no_message` means no error has been recorded.
 
 ## Installation
 

@@ -86,7 +86,7 @@ async def test_mower_health_and_statistics_are_published(
 ) -> None:
     assert _state(hass, "binary_sensor", "dev-1_problem").state == "off"
     last_error = _state(hass, "sensor", "dev-1_last_error")
-    assert last_error.state == "code_15"
+    assert last_error.state == "lifted"
     assert last_error.attributes["raw_code"] == 15
     assert _state(hass, "sensor", "dev-1_cutting_time").state == "1269"
     assert _state(hass, "sensor", "dev-1_collisions").state == "3120"

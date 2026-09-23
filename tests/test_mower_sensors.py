@@ -42,7 +42,7 @@ def mower_coordinator(coordinator: MagicMock, mower_device) -> MagicMock:
     return coordinator
 
 
-def test_last_error_sensor_exposes_unknown_code_raw(
+def test_last_error_sensor_names_known_code(
     mower_coordinator: MagicMock, mower_device
 ) -> None:
     entity = GardenaMowerLastErrorSensor(mower_coordinator, mower_device)
@@ -50,11 +50,20 @@ def test_last_error_sensor_exposes_unknown_code_raw(
     assert entity.unique_id == "dev-1_last_error"
     assert entity.translation_key == "last_error"
     assert entity.entity_category == EntityCategory.DIAGNOSTIC
-    assert entity.native_value == "code_15"
+    assert entity.native_value == "lifted"
     assert entity.extra_state_attributes == {
         "raw_code": 15,
         "timestamp": datetime(2026, 9, 23, 10, 6, 54, tzinfo=UTC),
     }
+
+
+def test_last_error_sensor_exposes_unknown_code_raw(coordinator: MagicMock) -> None:
+    device = make_gen1_mower({"last_error_code": {"vi": 999}})
+    coordinator.data = {device.id: device}
+    entity = GardenaMowerLastErrorSensor(coordinator, device)
+
+    assert entity.native_value == "code_999"
+    assert entity.extra_state_attributes["raw_code"] == 999
 
 
 def test_last_error_sensor_reports_no_message_for_code_zero(
