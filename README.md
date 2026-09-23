@@ -14,6 +14,8 @@ Home Assistant integration for GARDENA smart devices using local communication (
 
 - Local communication with GARDENA smart devices
 - Real-time updates via WebSocket
+- Mower position on the map (SILENO with LONA, SILENO pro/max/free), error
+  state, last error code and lifetime statistics
 
 ## Enabling WebSocket Support on the Gateway
 
@@ -46,6 +48,33 @@ To disable WebSocket Support, you can run:
 ```txt
 curl -X PUT -H "X-session: $session" -H 'Content-Type: application/json' -d '{"enable": false}' --insecure https://$gateway/websocket_api
 ```
+
+## Mower position, errors and statistics
+
+Mowers that can report their position (SILENO city/life with LONA, SILENO
+pro/max/free) get a `device_tracker` entity. The mower only sends positions
+while a reporting timer is running on the device, and the gateway caps that
+timer at one hour, so the integration:
+
+- requests one short (60 s) window when the entity is added and no position is
+  known yet, to place a docked mower on the map,
+- keeps reporting on while the mower is leaving, mowing or returning, renewing
+  the request every 50 minutes,
+- lets the timer lapse once the mower is parked or charging, to save radio and
+  battery.
+
+The `gps_accuracy` is derived from the raw GNSS horizontal accuracy, which the
+schema does not document a unit for; it is assumed to be millimetres and the raw
+value is kept in the `gnss_horizontal_accuracy` attribute.
+
+Gen1 mowers additionally get a **Problem** binary sensor (on while the mower is
+in an error state, with the active `error_codes` as attribute), a **Last error**
+sensor and lifetime counters (cutting time, running time, charging cycles,
+collisions). The mower reports errors as numbers only and the numbering is not
+documented, so unknown codes show as `code_<n>` with the number in the
+`raw_code` attribute and the time it happened in `timestamp`; `no_message`
+means no error has been recorded. Known codes are mapped in `mower.py`
+(`ERROR_CODES`) once they have been confirmed.
 
 ## Installation
 
@@ -208,15 +237,15 @@ If installed via HACS, you can also remove the integration files there: open HAC
 | GARDENA smart Sensor                       | 19030-20                                   | Temperature, soil moisture, light, battery, RF link quality |
 | GARDENA smart Sensor II                    | 19040-20                                   | Temperature, soil moisture, battery, RF link quality        |
 | GARDENA smart Power Adapter                | 19095-20                                   | Switch                                                      |
-| GARDENA smart SILENO                       | 19060-20, 19060-60                         | Lawn mower                                                  |
-| GARDENA smart SILENO+                      | 19061-20, 19061-60, 19064-60, 19065-60     | Lawn mower                                                  |
-| GARDENA smart SILENO city                  | 19066-20, 19069-20                         | Lawn mower                                                  |
-| GARDENA smart SILENO life                  | 19113-20, 19114-20, 19115-20               | Lawn mower                                                  |
-| GARDENA smart SILENO city (with LONA)      | 19602-66, 19603-60, 19605-60               | Lawn mower                                                  |
-| GARDENA smart SILENO life (with LONA)      | 19701-60, 19702-60, 19703-66, 19704-60     | Lawn mower                                                  |
-| GARDENA smart SILENO pro                   | 19802-20, 19802-22                         | Lawn mower                                                  |
-| GARDENA smart SILENO max                   | 19901-22                                   | Lawn mower                                                  |
-| GARDENA smart SILENO free                  | 19921-22, 19922-22, 19923-22               | Lawn mower                                                  |
+| GARDENA smart SILENO                       | 19060-20, 19060-60                         | Lawn mower, problem, last error, statistics                 |
+| GARDENA smart SILENO+                      | 19061-20, 19061-60, 19064-60, 19065-60     | Lawn mower, problem, last error, statistics                 |
+| GARDENA smart SILENO city                  | 19066-20, 19069-20                         | Lawn mower, problem, last error, statistics                 |
+| GARDENA smart SILENO life                  | 19113-20, 19114-20, 19115-20               | Lawn mower, problem, last error, statistics                 |
+| GARDENA smart SILENO city (with LONA)      | 19602-66, 19603-60, 19605-60               | Lawn mower, position, problem, last error, statistics       |
+| GARDENA smart SILENO life (with LONA)      | 19701-60, 19701-72, 19702-60, 19703-66, 19704-60 | Lawn mower, position, problem, last error, statistics |
+| GARDENA smart SILENO pro                   | 19802-20, 19802-22                         | Lawn mower, position, problem                                |
+| GARDENA smart SILENO max                   | 19901-22                                   | Lawn mower, position, problem                                |
+| GARDENA smart SILENO free                  | 19921-22, 19922-22, 19923-22               | Lawn mower, position, problem                                |
 | Flymo UltraLife                            | 970620501, 970620701, 970715101, 970715201 | Lawn mower                                                  |
 
 > [!NOTE]

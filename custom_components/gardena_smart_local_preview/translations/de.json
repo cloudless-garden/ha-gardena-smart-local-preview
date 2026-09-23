@@ -3,6 +3,9 @@
     "binary_sensor": {
       "frost_warning": {
         "name": "Frostwarnung"
+      },
+      "problem": {
+        "name": "Problem"
       }
     },
     "button": {
@@ -20,6 +23,11 @@
       },
       "clear_schedules": {
         "name": "Zeitpläne löschen"
+      }
+    },
+    "device_tracker": {
+      "position": {
+        "name": "Position"
       }
     },
     "number": {
@@ -102,6 +110,21 @@
           "downloaded": "Heruntergeladen",
           "updating": "Wird aktualisiert"
         }
+      },
+      "last_error": {
+        "name": "Letzter Fehler"
+      },
+      "cutting_time": {
+        "name": "Schneidzeit"
+      },
+      "running_time": {
+        "name": "Fahrzeit"
+      },
+      "charging_cycles": {
+        "name": "Ladezyklen"
+      },
+      "collisions": {
+        "name": "Kollisionen"
       }
     },
     "valve": {

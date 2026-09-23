@@ -4,8 +4,10 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+from datetime import datetime
 from functools import partial
-from typing import ClassVar
+from typing import Any, ClassVar
 
 from gardena_smart_local_api.devices import Pump
 from gardena_smart_local_api.devices.device import Device, FirmwareUpdateState
@@ -13,6 +15,7 @@ from gardena_smart_local_api.devices.irrigation import PumpState
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
+    SensorEntityDescription,
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
@@ -22,12 +25,14 @@ from homeassistant.const import (
     EntityCategory,
     UnitOfPressure,
     UnitOfTemperature,
+    UnitOfTime,
     UnitOfVolume,
     UnitOfVolumeFlowRate,
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
+from . import mower as mower_helpers
 from .coordinator import GardenaSmartLocalCoordinator
 from .entity import EntityFactories, GardenaEntity, async_setup_device_entities
 
@@ -61,6 +66,14 @@ async def async_setup_entry(
             entities["rf_link_quality"] = partial(
                 GardenaRfLinkQualitySensor, coordinator, device
             )
+        if mower_helpers.is_gen1_mower(device):
+            entities["last_error"] = partial(
+                GardenaMowerLastErrorSensor, coordinator, device
+            )
+            for description in MOWER_STATISTICS:
+                entities[description.key] = partial(
+                    GardenaMowerStatisticSensor, coordinator, device, description
+                )
         if isinstance(device, Pump):
             entities["pump_pressure"] = partial(
                 GardenaPumpPressureSensor, coordinator, device
@@ -384,3 +397,103 @@ class GardenaFirmwareUpdateStateSensor(GardenaEntity, SensorEntity):
             return None
         state = device.firmware_update_state
         return str(state) if state is not None else None
+
+
+class GardenaMowerLastErrorSensor(GardenaEntity, SensorEntity):
+    """Last error code the mower reported; it stays after the error clears."""
+
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_translation_key = "last_error"
+    _attr_icon = "mdi:alert-circle-outline"
+
+    def __init__(
+        self,
+        coordinator: GardenaSmartLocalCoordinator,
+        device: Device,
+    ) -> None:
+        super().__init__(coordinator, device)
+        self._attr_unique_id = f"{device.id}_last_error"
+
+    @property
+    def native_value(self) -> str | None:
+        device = self.coordinator.data.get(self._device.id)
+        if not device:
+            return None
+        return mower_helpers.error_code_to_state(
+            mower_helpers.get_last_error_code(device)
+        )
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        device = self.coordinator.data.get(self._device.id)
+        code: int | None = None
+        timestamp: datetime | None = None
+        if device:
+            code = mower_helpers.get_last_error_code(device)
+            timestamp = mower_helpers.get_last_error_timestamp(device)
+        # raw_code is what the calibration automation pairs with the cloud text
+        return {"raw_code": code, "timestamp": timestamp}
+
+
+@dataclass(frozen=True, kw_only=True)
+class GardenaMowerStatisticDescription(SensorEntityDescription):
+    """A lifetime counter read from a ``lemonbeat`` resource of the mower."""
+
+    resource_name: str
+
+
+MOWER_STATISTICS: tuple[GardenaMowerStatisticDescription, ...] = (
+    GardenaMowerStatisticDescription(
+        key="cutting_time",
+        translation_key="cutting_time",
+        resource_name="cutting_time",
+        device_class=SensorDeviceClass.DURATION,
+        native_unit_of_measurement=UnitOfTime.HOURS,
+        icon="mdi:fence",
+    ),
+    GardenaMowerStatisticDescription(
+        key="running_time",
+        translation_key="running_time",
+        resource_name="running_time",
+        device_class=SensorDeviceClass.DURATION,
+        native_unit_of_measurement=UnitOfTime.HOURS,
+        icon="mdi:timer-cog-outline",
+    ),
+    GardenaMowerStatisticDescription(
+        key="charging_cycles",
+        translation_key="charging_cycles",
+        resource_name="charging_cycles",
+        icon="mdi:battery-sync",
+    ),
+    GardenaMowerStatisticDescription(
+        key="collisions",
+        translation_key="collisions",
+        resource_name="collisions",
+        icon="mdi:car-brake-alert",
+    ),
+)
+
+
+class GardenaMowerStatisticSensor(GardenaEntity, SensorEntity):
+    entity_description: GardenaMowerStatisticDescription
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_state_class = SensorStateClass.TOTAL_INCREASING
+
+    def __init__(
+        self,
+        coordinator: GardenaSmartLocalCoordinator,
+        device: Device,
+        description: GardenaMowerStatisticDescription,
+    ) -> None:
+        super().__init__(coordinator, device)
+        self.entity_description = description
+        self._attr_unique_id = f"{device.id}_{description.key}"
+
+    @property
+    def native_value(self) -> int | None:
+        device = self.coordinator.data.get(self._device.id)
+        if not device:
+            return None
+        return mower_helpers.get_lemonbeat_int(
+            device, self.entity_description.resource_name
+        )
