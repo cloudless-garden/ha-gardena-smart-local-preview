@@ -8,7 +8,7 @@ import logging
 from functools import partial
 from typing import Any
 
-import voluptuous as vol
+import probatio
 from gardena_smart_local_api.devices import PowerAdapter, Pump
 from gardena_smart_local_api.devices.device import Device
 from homeassistant.components.switch import SwitchDeviceClass, SwitchEntity
@@ -50,7 +50,9 @@ async def async_setup_entry(
             # min=1 only to avoid colliding with 0, which build_enable_output_obj
             # treats as "disable" rather than "on for 0 seconds". Unlike the
             # valve/pump, the outlet has no app-defined upper duration limit.
-            vol.Optional("duration"): vol.All(vol.Coerce(int), vol.Range(min=1))
+            probatio.Optional("duration"): probatio.All(
+                probatio.Coerce(int), probatio.Range(min=1)
+            )
         },
         "async_turn_on_for",
     )
@@ -59,8 +61,8 @@ async def async_setup_entry(
         {
             # Seconds, like open_valve/enable_output. 60-5400 (1-90 min) is the
             # duration range the official app offers for pumps.
-            vol.Optional("duration"): vol.All(
-                vol.Coerce(int), vol.Range(min=60, max=5400)
+            probatio.Optional("duration"): probatio.All(
+                probatio.Coerce(int), probatio.Range(min=60, max=5400)
             )
         },
         "async_turn_on_for",
