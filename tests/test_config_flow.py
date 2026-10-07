@@ -32,7 +32,7 @@ MOCK_PASSWORD = "testpassword"
 PATCH_TRY_CONNECT = (
     "custom_components.gardena_smart_local_preview.config_flow._async_try_connect"
 )
-PATCH_EXTRACT_HOSTNAME_FROM_CERT = "custom_components.gardena_smart_local_preview.config_flow._async_extract_hostname_from_cert"
+PATCH_EXTRACT_HOSTNAME_FROM_CERT = "custom_components.gardena_smart_local_preview.config_flow.async_extract_hostname_from_cert"
 PATCH_SETUP_ENTRY = "custom_components.gardena_smart_local_preview.async_setup_entry"
 PATCH_UNLOAD_ENTRY = "custom_components.gardena_smart_local_preview.async_unload_entry"
 
