@@ -182,6 +182,10 @@
     "exclude_failed": {
       "title": "Could not remove {device_id} from the gateway",
       "description": "Home Assistant removed the device, but the gateway did not confirm the exclusion, so the device may still be paired with the gateway. If it is, the device shows up in Home Assistant again the next time the gateway reports it. Remove it again while the gateway is online. To remove it without Home Assistant, reset the device as described in its manual."
+    },
+    "duplicate_gateway": {
+      "title": "Gateway {hostname} is set up twice",
+      "description": "This entry and another entry both connect to the gateway {hostname}, so this entry could not be switched to the gateway's stable ID. Remove one of the two entries."
     }
   },
   "config": {
