@@ -57,7 +57,7 @@ class GardenaSmartLocalConfigFlow(ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             host = user_input[CONF_HOST]
             unique_id = (
-                await _async_extract_hostname_from_cert(host, user_input[CONF_PORT])
+                await async_extract_hostname_from_cert(host, user_input[CONF_PORT])
                 or host
             )
             await self.async_set_unique_id(unique_id)
@@ -165,7 +165,7 @@ class GardenaSmartLocalConfigFlow(ConfigFlow, domain=DOMAIN):
                 errors["base"] = error
             else:
                 unique_id = (
-                    await _async_extract_hostname_from_cert(
+                    await async_extract_hostname_from_cert(
                         user_input[CONF_HOST], user_input[CONF_PORT]
                     )
                     or entry.unique_id
@@ -239,7 +239,7 @@ async def _async_try_connect(
     return None
 
 
-async def _async_extract_hostname_from_cert(host: str, port: int) -> str | None:
+async def async_extract_hostname_from_cert(host: str, port: int) -> str | None:
     """Return the hostname taken from its TLS certificate.
 
     The gateway certificate lists its mDNS hostname (``GARDENA-xxxxxx.local``) as a
