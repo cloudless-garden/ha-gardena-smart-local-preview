@@ -5,6 +5,8 @@
 import asyncio
 import base64
 import logging
+from collections.abc import Mapping
+from typing import Any
 
 import aiohttp
 import voluptuous as vol
@@ -136,6 +138,38 @@ class GardenaSmartLocalConfigFlow(ConfigFlow, domain=DOMAIN):
             description_placeholders={
                 "name": self.context["title_placeholders"]["name"],
             },
+            errors=errors,
+        )
+
+    async def async_step_reauth(
+        self, entry_data: Mapping[str, Any]
+    ) -> ConfigFlowResult:
+        return await self.async_step_reauth_confirm()
+
+    async def async_step_reauth_confirm(
+        self, user_input: dict | None = None
+    ) -> ConfigFlowResult:
+        errors: dict[str, str] = {}
+        entry = self._get_reauth_entry()
+
+        if user_input is not None:
+            error = await _async_try_connect(
+                self.hass,
+                entry.data[CONF_HOST],
+                entry.data[CONF_PORT],
+                user_input[CONF_PASSWORD],
+            )
+            if error:
+                errors["base"] = error
+            else:
+                return self.async_update_reload_and_abort(
+                    entry, data_updates={CONF_PASSWORD: user_input[CONF_PASSWORD]}
+                )
+
+        return self.async_show_form(
+            step_id="reauth_confirm",
+            data_schema=vol.Schema({vol.Required(CONF_PASSWORD): str}),
+            description_placeholders={"name": entry.title},
             errors=errors,
         )
 
