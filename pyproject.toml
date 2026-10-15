@@ -8,7 +8,7 @@
 [project]
 name = "ha-gardena-smart-local-preview"
 version = "0.3.0"
-requires-python = ">=3.13"
+requires-python = ">=3.13,<3.15"
 
 [dependency-groups]
 dev = [
