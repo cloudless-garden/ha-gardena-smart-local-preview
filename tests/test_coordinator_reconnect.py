@@ -12,7 +12,9 @@ from unittest.mock import MagicMock, patch
 
 import aiohttp
 from homeassistant.core import HomeAssistant
+from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from custom_components.gardena_smart_local_preview.const import DOMAIN
 from custom_components.gardena_smart_local_preview.coordinator import (
     GardenaSmartLocalCoordinator,
 )
@@ -20,8 +22,10 @@ from custom_components.gardena_smart_local_preview.coordinator import (
 
 async def test_socket_teardown_drops_queued_frames(hass: HomeAssistant) -> None:
     """Frames queued for a closed socket are not replayed on the next connection."""
+    entry = MockConfigEntry(domain=DOMAIN)
+    entry.add_to_hass(hass)
     coordinator = GardenaSmartLocalCoordinator(
-        hass, "192.168.1.100", 8443, "testpassword"
+        hass, entry, "192.168.1.100", 8443, "testpassword"
     )
     coordinator._msg_queue.put_nowait('[{"op": "update"}]')
     session = MagicMock()

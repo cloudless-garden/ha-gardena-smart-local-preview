@@ -6,11 +6,15 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock
+import asyncio
+from unittest.mock import AsyncMock, MagicMock, patch
 
+import aiohttp
 import pytest
 from homeassistant.core import HomeAssistant
+from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from custom_components.gardena_smart_local_preview.const import DOMAIN
 from custom_components.gardena_smart_local_preview.coordinator import (
     GardenaSmartLocalCoordinator,
 )
@@ -19,7 +23,11 @@ from custom_components.gardena_smart_local_preview.coordinator import (
 @pytest.fixture
 def coordinator(hass: HomeAssistant) -> GardenaSmartLocalCoordinator:
     """Return a coordinator that is not connected to a gateway."""
-    return GardenaSmartLocalCoordinator(hass, "192.168.1.100", 8443, "testpassword")
+    entry = MockConfigEntry(domain=DOMAIN)
+    entry.add_to_hass(hass)
+    return GardenaSmartLocalCoordinator(
+        hass, entry, "192.168.1.100", 8443, "testpassword"
+    )
 
 
 def test_schedule_unknown_device_discovery_collapses_burst(
@@ -78,3 +86,51 @@ async def test_async_disconnect_cancels_pending_rediscovery(
     await coordinator.async_disconnect()
 
     assert coordinator._unknown_device_discovery_handle is None
+
+
+def _rejected_password() -> aiohttp.WSServerHandshakeError:
+    return aiohttp.WSServerHandshakeError(MagicMock(), (), status=401)
+
+
+async def test_ws_loop_starts_reauth_when_password_changes(
+    coordinator: GardenaSmartLocalCoordinator,
+) -> None:
+    """A 401 on reconnect starts reauthentication and stops retrying."""
+    session = MagicMock()
+    session.ws_connect.side_effect = _rejected_password()
+    coordinator._first_connect_result = asyncio.get_running_loop().create_future()
+    coordinator._first_connect_result.set_result(None)
+
+    with (
+        patch(
+            "custom_components.gardena_smart_local_preview.coordinator.async_get_clientsession",
+            return_value=session,
+        ),
+        patch.object(coordinator.config_entry, "async_start_reauth") as start_reauth,
+    ):
+        await asyncio.wait_for(coordinator._ws_loop(), timeout=1)
+
+    start_reauth.assert_called_once_with(coordinator.hass)
+    session.ws_connect.assert_called_once()
+
+
+async def test_ws_loop_reports_rejected_password_to_setup(
+    coordinator: GardenaSmartLocalCoordinator,
+) -> None:
+    """A 401 on the first connection is left to setup, which owns reauth."""
+    session = MagicMock()
+    session.ws_connect.side_effect = _rejected_password()
+    coordinator._first_connect_result = asyncio.get_running_loop().create_future()
+
+    with (
+        patch(
+            "custom_components.gardena_smart_local_preview.coordinator.async_get_clientsession",
+            return_value=session,
+        ),
+        patch.object(coordinator.config_entry, "async_start_reauth") as start_reauth,
+    ):
+        await asyncio.wait_for(coordinator._ws_loop(), timeout=1)
+
+    with pytest.raises(aiohttp.WSServerHandshakeError):
+        coordinator._first_connect_result.result()
+    start_reauth.assert_not_called()
