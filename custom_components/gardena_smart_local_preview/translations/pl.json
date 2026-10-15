@@ -211,6 +211,16 @@
           "password": "Pierwszy blok ID bramki wydrukowanego na spodzie urządzenia (np. `0824b95b` z `0824b95b-996c-48f7-83dc-…`)."
         }
       },
+      "reauth_confirm": {
+        "title": "Uwierzytelnij ponownie GARDENA smart Gateway",
+        "description": "Bramka **{name}** odrzuciła zapisane hasło. Wprowadź jej aktualne hasło.",
+        "data": {
+          "password": "Hasło"
+        },
+        "data_description": {
+          "password": "Aktualne hasło bramki GARDENA smart Gateway. Jeśli nie zostało zmienione, jest to pierwszy blok ID bramki wydrukowanego na spodzie urządzenia."
+        }
+      },
       "reconfigure": {
         "title": "Zmień ustawienia GARDENA smart Gateway",
         "data": {
@@ -233,7 +243,8 @@
     "abort": {
       "already_configured": "Bramka jest już skonfigurowana",
       "already_in_progress": "Bramka została wykryta automatycznie, kliknij „Dodaj” przy wykrytej integracji",
-      "reconfigure_successful": "Ustawienia GARDENA smart Gateway zaktualizowane"
+      "reconfigure_successful": "Ustawienia GARDENA smart Gateway zaktualizowane",
+      "reauth_successful": "Ponowne uwierzytelnienie powiodło się"
     }
   }
 }
