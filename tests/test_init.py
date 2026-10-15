@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import aiohttp
+from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_PORT
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import issue_registry as ir
@@ -152,3 +154,22 @@ async def test_migrate_unique_id_clears_resolved_duplicate_issue(
         )
         is None
     )
+
+
+async def test_setup_rejected_password_starts_reauth(hass: HomeAssistant) -> None:
+    """A gateway that answers 401 puts the entry into reauthentication."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={CONF_HOST: "192.168.1.100", CONF_PORT: 8443, CONF_PASSWORD: "old"},
+    )
+    entry.add_to_hass(hass)
+
+    with patch(
+        "custom_components.gardena_smart_local_preview.GardenaSmartLocalCoordinator.async_connect",
+        side_effect=aiohttp.WSServerHandshakeError(MagicMock(), (), status=401),
+    ):
+        await hass.config_entries.async_setup(entry.entry_id)
+
+    assert entry.state is ConfigEntryState.SETUP_ERROR
+    flows = hass.config_entries.flow.async_progress_by_handler(DOMAIN)
+    assert [flow["context"]["source"] for flow in flows] == ["reauth"]
