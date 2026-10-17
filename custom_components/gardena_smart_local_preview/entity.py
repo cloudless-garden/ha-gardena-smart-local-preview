@@ -8,7 +8,7 @@ import logging
 from collections.abc import Callable
 
 from gardena_smart_local_api.devices.device import Device
-from gardena_smart_local_api.messages import EgressMessageList, Reply
+from gardena_smart_local_api.messages import EgressMessageList, ErrorMessage, Reply
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
@@ -272,6 +272,11 @@ class GardenaEntity(CoordinatorEntity[GardenaSmartLocalCoordinator]):
             ) from err
 
         for msg in replies:
+            if isinstance(msg, ErrorMessage):
+                raise HomeAssistantError(
+                    f"GARDENA smart Gateway rejected the command for device "
+                    f"{self._device.id}: {msg.error_message}"
+                )
             if isinstance(msg, Reply) and not msg.success:
                 raise HomeAssistantError(
                     f"GARDENA smart Gateway rejected the command for device "
