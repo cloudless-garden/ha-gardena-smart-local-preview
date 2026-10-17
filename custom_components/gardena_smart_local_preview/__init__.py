@@ -83,6 +83,39 @@ async def _async_exclude_and_report_failure(
     )
 
 
+async def _async_migrate_unique_id(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Move an entry that is still identified by its host to the gateway name.
+
+    Entries created before the certificate carried the gateway name, or against
+    firmware that did not have it yet, use the host as unique_id. Once the
+    gateway reports its name, such an entry would no longer match its own
+    discovery and could be added a second time.
+    """
+    hostname = await config_flow.async_extract_hostname_from_cert(
+        entry.data[CONF_HOST], entry.data[CONF_PORT]
+    )
+    if hostname is None or hostname == entry.unique_id:
+        return
+
+    issue_id = f"duplicate_gateway_{entry.entry_id}"
+    for other in hass.config_entries.async_entries(DOMAIN):
+        if other.entry_id != entry.entry_id and other.unique_id == hostname:
+            ir.async_create_issue(
+                hass,
+                DOMAIN,
+                issue_id,
+                is_fixable=False,
+                severity=ir.IssueSeverity.WARNING,
+                translation_key="duplicate_gateway",
+                translation_placeholders={"hostname": hostname},
+            )
+            return
+
+    ir.async_delete_issue(hass, DOMAIN, issue_id)
+    _LOGGER.info("Changing unique_id %s to %s", entry.unique_id, hostname)
+    hass.config_entries.async_update_entry(entry, unique_id=hostname)
+
+
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     if DOMAIN not in config:
         return True
@@ -117,6 +150,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             f"Could not connect to GARDENA smart Gateway at {coordinator.uri}"
         ) from err
     entry.runtime_data = coordinator
+
+    await _async_migrate_unique_id(hass, entry)
 
     async def _stop(_event: object) -> None:
         await coordinator.async_disconnect()
