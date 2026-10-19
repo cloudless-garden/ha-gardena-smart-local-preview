@@ -49,7 +49,16 @@ curl -X PUT -H "X-session: $session" -H 'Content-Type: application/json' -d '{"e
 
 ## Installation
 
-### HACS (Recommended)
+### Marketplace (Home Assistant 2026.11 and newer, recommended)
+
+1. Go to **Settings → Marketplace**
+2. Search for "GARDENA smart local (preview)" and open its repository page
+3. Select **Install** and confirm the version in the dialog
+4. Restart Home Assistant if a repair asks you to
+
+The Marketplace replaces HACS. If you installed this integration via HACS before updating to 2026.11, it is migrated automatically.
+
+### HACS (Home Assistant 2026.10 and older)
 
 1. [Install HACS] on your Home Assistant instance
 2. Click on HACS in the sidebar
@@ -192,7 +201,7 @@ icon_tap_action:
 2. Find the "GARDENA smart local (preview)" integration and click on it to see its entries (gateways)
 3. On the gateway integration entry, click the three-dot menu and select **Delete**
 
-If installed via HACS, you can also remove the integration files there: open HACS, find "GARDENA smart local (preview)", click on the three dots on the right and then on **Remove**. For a manual installation, delete the `custom_components/gardena_smart_local_preview` directory instead.
+If installed via the Marketplace (or HACS on 2026.10 and older), you can also remove the integration files there: open **Settings → Marketplace** (or HACS), find "GARDENA smart local (preview)" and remove it. For a manual installation, delete the `custom_components/gardena_smart_local_preview` directory instead.
 
 ## Supported Devices
 
