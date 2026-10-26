@@ -23,7 +23,6 @@ from homeassistant.const import (
 )
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import ConfigEntryNotReady
-from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 
@@ -127,15 +126,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     def _ensure_device_subentries() -> None:
         if not coordinator.data:
             return
-        dev_reg = dr.async_get(hass)
-        subentry_ids_by_device = {
-            se.data["device_id"]: sid
-            for sid, se in entry.subentries.items()
-            if "device_id" in se.data
-        }
+        device_ids_with_subentry = set()
+        for subentry in entry.subentries.values():
+            if "device_id" in subentry.data:
+                device_ids_with_subentry.add(subentry.data["device_id"])
         for device in coordinator.data.values():
-            subentry_id = subentry_ids_by_device.get(device.id)
-            if subentry_id is None:
+            if device.id not in device_ids_with_subentry:
                 subentry = ConfigSubentry(
                     data=MappingProxyType({"device_id": device.id}),
                     subentry_type="device",
@@ -143,26 +139,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                     unique_id=device.id,
                 )
                 hass.config_entries.async_add_subentry(entry, subentry)
-                subentry_id = subentry.subentry_id
                 _LOGGER.info("Created subentry for device %s", device.id)
-
-            # TODO remove this re-link migration after a few releases, once we
-            # can be sure most users have migrated to the new config entries
-            # structure with subentries.
-            dev_entry = dev_reg.async_get_device(identifiers={(DOMAIN, device.id)})
-            if (
-                dev_entry is not None
-                and None
-                in dev_entry.config_entries_subentries.get(entry.entry_id, set())
-            ):
-                dev_reg.async_update_device(
-                    dev_entry.id,
-                    add_config_entry_id=entry.entry_id,
-                    add_config_subentry_id=subentry_id,
-                    remove_config_entry_id=entry.entry_id,
-                    remove_config_subentry_id=None,
-                )
-                _LOGGER.info("Migrated device %s to subentry", device.id)
 
     # Register before platform listeners, and run once immediately, so
     # subentries exist for already-discovered devices before platforms
