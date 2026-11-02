@@ -22,6 +22,20 @@ jobs:
         with:
           args: format --check
 
+  version-sync:
+    name: Version sync
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Check manifest and pyproject versions match
+        run: |
+          MANIFEST_VERSION=$(jq -r '.version' custom_components/gardena_smart_local_preview/manifest.json)
+          PYPROJECT_VERSION=$(grep -m1 '^version = ' pyproject.toml | sed -E 's/version = "(.*)"/\1/')
+          if [ "$MANIFEST_VERSION" != "$PYPROJECT_VERSION" ]; then
+            echo "manifest.json version ($MANIFEST_VERSION) does not match pyproject.toml version ($PYPROJECT_VERSION)"
+            exit 1
+          fi
+
   hassfest:
     name: Hassfest
     runs-on: ubuntu-latest

@@ -6,7 +6,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from homeassistant.core import HomeAssistant
@@ -78,3 +78,21 @@ async def test_async_disconnect_cancels_pending_rediscovery(
     await coordinator.async_disconnect()
 
     assert coordinator._unknown_device_discovery_handle is None
+
+
+def test_update_devices_survives_a_broken_device(
+    coordinator: GardenaSmartLocalCoordinator,
+) -> None:
+    """A device that cannot be applied does not block the devices after it."""
+    broken, healthy = MagicMock(id="broken"), MagicMock(id="healthy")
+    original = coordinator._update_device
+
+    def _update(device: MagicMock) -> None:
+        if device is broken:
+            raise RuntimeError("bad")
+        original(device)
+
+    with patch.object(coordinator, "_update_device", side_effect=_update):
+        coordinator._update_devices({"broken": broken, "healthy": healthy})
+
+    assert list(coordinator._devices.keys()) == ["healthy"]
