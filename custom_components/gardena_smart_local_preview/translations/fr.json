@@ -172,6 +172,10 @@
     "exclude_failed": {
       "title": "Impossible de retirer {device_id} de la passerelle",
       "description": "Home Assistant a retiré l'appareil, mais la passerelle n'a pas confirmé l'exclusion : l'appareil est donc peut-être encore appairé avec la passerelle. Dans ce cas, il réapparaîtra dans Home Assistant la prochaine fois que la passerelle le signalera. Retirez-le à nouveau pendant que la passerelle est en ligne. Pour le retirer sans Home Assistant, réinitialisez l'appareil comme indiqué dans son manuel."
+    },
+    "duplicate_gateway": {
+      "title": "La passerelle {hostname} est configurée deux fois",
+      "description": "Cette entrée et une autre entrée se connectent à la passerelle {hostname} : cette entrée n'a donc pas pu passer à l'identifiant stable de la passerelle. Supprimez l'une des deux entrées."
     }
   },
   "config": {
