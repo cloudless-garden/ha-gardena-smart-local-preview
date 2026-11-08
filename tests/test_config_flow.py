@@ -11,13 +11,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import aiohttp
 import pytest
-import voluptuous_serialize
 from homeassistant.config_entries import SOURCE_IMPORT, SOURCE_USER, SOURCE_ZEROCONF
 from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_PORT
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import InvalidData
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
+from probatio.codecs.fields import to_field_list
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.gardena_smart_local_preview.const import DEFAULT_PORT, DOMAIN
@@ -115,7 +115,7 @@ async def test_user_form_schema_serializes(hass: HomeAssistant) -> None:
         DOMAIN, context={"source": SOURCE_USER}
     )
 
-    fields = voluptuous_serialize.convert(
+    fields = to_field_list(
         result["data_schema"], custom_serializer=cv.custom_serializer
     )
     host = next(f for f in fields if f["name"] == CONF_HOST)
