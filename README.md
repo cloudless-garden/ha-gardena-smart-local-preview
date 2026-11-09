@@ -217,16 +217,16 @@ If installed via the Marketplace, you can also remove the integration files ther
 | GARDENA smart Sensor                       | 19030-20                                   | Temperature, soil moisture, light, battery, RF link quality |
 | GARDENA smart Sensor II                    | 19040-20                                   | Temperature, soil moisture, battery, RF link quality        |
 | GARDENA smart Power Adapter                | 19095-20                                   | Switch                                                      |
-| GARDENA smart SILENO                       | 19060-20, 19060-60                         | Lawn mower                                                  |
-| GARDENA smart SILENO+                      | 19061-20, 19061-60, 19064-60, 19065-60     | Lawn mower                                                  |
-| GARDENA smart SILENO city                  | 19066-20, 19069-20                         | Lawn mower                                                  |
-| GARDENA smart SILENO life                  | 19113-20, 19114-20, 19115-20               | Lawn mower                                                  |
-| GARDENA smart SILENO city (with LONA)      | 19602-66, 19603-60, 19605-60               | Lawn mower                                                  |
-| GARDENA smart SILENO life (with LONA)      | 19701-60, 19702-60, 19703-66, 19704-60     | Lawn mower                                                  |
-| GARDENA smart SILENO pro                   | 19802-20, 19802-22                         | Lawn mower                                                  |
-| GARDENA smart SILENO max                   | 19901-22                                   | Lawn mower                                                  |
-| GARDENA smart SILENO free                  | 19921-22, 19922-22, 19923-22               | Lawn mower                                                  |
-| Flymo UltraLife                            | 970620501, 970620701, 970715101, 970715201 | Lawn mower                                                  |
+| GARDENA smart SILENO                       | 19060-20, 19060-60                         | Lawn mower, problem                                         |
+| GARDENA smart SILENO+                      | 19061-20, 19061-60, 19064-60, 19065-60     | Lawn mower, problem                                         |
+| GARDENA smart SILENO city                  | 19066-20, 19069-20                         | Lawn mower, problem                                         |
+| GARDENA smart SILENO life                  | 19113-20, 19114-20, 19115-20               | Lawn mower, problem                                         |
+| GARDENA smart SILENO city (with LONA)      | 19602-66, 19603-60, 19605-60               | Lawn mower, problem                                         |
+| GARDENA smart SILENO life (with LONA)      | 19701-60, 19702-60, 19703-66, 19704-60     | Lawn mower, problem                                         |
+| GARDENA smart SILENO pro                   | 19802-20, 19802-22                         | Lawn mower, problem                                         |
+| GARDENA smart SILENO max                   | 19901-22                                   | Lawn mower, problem                                         |
+| GARDENA smart SILENO free                  | 19921-22, 19922-22, 19923-22               | Lawn mower, problem                                         |
+| Flymo UltraLife                            | 970620501, 970620701, 970715101, 970715201 | Lawn mower, problem                                         |
 
 > [!NOTE]
 > The temperature sensor integrated into Water Control devices is intended solely for frost detection, not for precise real-time temperature tracking.
