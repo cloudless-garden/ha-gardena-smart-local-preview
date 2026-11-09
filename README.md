@@ -80,7 +80,16 @@ it happened in `timestamp`. `no_message` means no error has been recorded.
 
 ## Installation
 
-### HACS (Recommended)
+### Marketplace (Home Assistant 2026.11 and newer, recommended)
+
+1. Go to **Settings → Marketplace** (administrators only) and accept the notice that community projects are not reviewed by the Home Assistant project
+2. Search for "GARDENA smart local (preview)" and open its repository page
+3. Select **Install** and confirm the version in the dialog
+4. Continue with [Configuration](#configuration). A restart is only needed if a repair asks for it
+
+The Marketplace replaces HACS. If you installed this integration via HACS before updating to 2026.11, it is migrated automatically.
+
+### HACS (Home Assistant 2026.10 and older)
 
 1. [Install HACS] on your Home Assistant instance
 2. Click on HACS in the sidebar
@@ -223,7 +232,7 @@ icon_tap_action:
 2. Find the "GARDENA smart local (preview)" integration and click on it to see its entries (gateways)
 3. On the gateway integration entry, click the three-dot menu and select **Delete**
 
-If installed via HACS, you can also remove the integration files there: open HACS, find "GARDENA smart local (preview)", click on the three dots on the right and then on **Remove**. For a manual installation, delete the `custom_components/gardena_smart_local_preview` directory instead.
+If installed via the Marketplace, you can also remove the integration files there: open the repository page of "GARDENA smart local (preview)" in **Settings → Marketplace**, open the three-dot menu and select **Uninstall**. If installed via HACS (Home Assistant 2026.10 and older), open HACS, find "GARDENA smart local (preview)", click on the three dots on the right and then on **Remove**. For a manual installation, delete the `custom_components/gardena_smart_local_preview` directory instead.
 
 ## Supported Devices
 

@@ -1,6 +1,7 @@
 {
   "domain": "gardena_smart_local_preview",
   "name": "GARDENA smart local (preview)",
+  "categories": ["garden_plants"],
   "codeowners": ["@cloudless-garden"],
   "config_flow": true,
   "documentation": "https://github.com/cloudless-garden/ha-gardena-smart-local-preview",
