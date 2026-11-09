@@ -1,0 +1,239 @@
+{
+  "entity": {
+    "binary_sensor": {
+      "frost_warning": {
+        "name": "Ostrzeżenie o mrozie"
+      }
+    },
+    "button": {
+      "identify": {
+        "name": "Identyfikuj"
+      },
+      "reset_resettable_flow": {
+        "name": "Zeruj przepływ"
+      },
+      "reset_valve_errors": {
+        "name": "Zeruj błędy zaworu"
+      },
+      "reset_temperature_min_max": {
+        "name": "Zeruj min./maks. temperatury"
+      },
+      "clear_schedules": {
+        "name": "Wyczyść harmonogramy"
+      }
+    },
+    "number": {
+      "button_watering_duration": {
+        "name": "Czas podlewania z przycisku"
+      },
+      "button_watering_duration_numbered": {
+        "name": "Czas podlewania z przycisku {number}"
+      },
+      "turn_on_pressure": {
+        "name": "Ciśnienie załączenia"
+      }
+    },
+    "select": {
+      "operating_mode": {
+        "name": "Tryb pracy",
+        "state": {
+          "scheduled": "Harmonogram",
+          "automatic": "Automatyczny"
+        }
+      },
+      "dripping_alert": {
+        "name": "Alarm kapania",
+        "state": {
+          "standard": "Standardowy",
+          "sensitive": "Czuły",
+          "deactivated": "Wyłączony"
+        }
+      }
+    },
+    "sensor": {
+      "temperature": {
+        "name": "Temperatura"
+      },
+      "soil_moisture": {
+        "name": "Wilgotność gleby"
+      },
+      "light": {
+        "name": "Światło"
+      },
+      "battery": {
+        "name": "Bateria"
+      },
+      "rf_link_quality": {
+        "name": "Jakość łącza radiowego"
+      },
+      "outlet_pressure": {
+        "name": "Ciśnienie na wyjściu"
+      },
+      "outlet_temperature": {
+        "name": "Temperatura na wyjściu"
+      },
+      "flow_rate": {
+        "name": "Przepływ"
+      },
+      "total_flow": {
+        "name": "Przepływ całkowity"
+      },
+      "flow_since_reset": {
+        "name": "Przepływ od wyzerowania"
+      },
+      "pump_state": {
+        "name": "Stan pompy",
+        "state": {
+          "pump_is_just_starting": "Pompa się uruchamia",
+          "water_in_the_pump_body": "Woda w pompie",
+          "no_water_in_the_pump_body": "Brak wody w pompie",
+          "flow_after_5s": "Przepływ po 5 sekundach",
+          "no_flow_after_5s": "Brak przepływu po 5 sekundach"
+        }
+      },
+      "schedule_count": {
+        "name": "Liczba harmonogramów"
+      },
+      "firmware_update_state": {
+        "name": "Stan aktualizacji oprogramowania",
+        "state": {
+          "idle": "Bezczynny",
+          "downloading": "Pobieranie",
+          "downloaded": "Pobrano",
+          "updating": "Aktualizacja"
+        }
+      }
+    },
+    "valve": {
+      "valve": {
+        "name": "Zawór {number}"
+      }
+    }
+  },
+  "config_subentries": {
+    "device": {
+      "entry_type": "Urządzenie",
+      "initiate_flow": {
+        "user": "Dodaj urządzenie"
+      },
+      "step": {
+        "user": {
+          "title": "Dodaj urządzenie GARDENA",
+          "description": "Przełącz urządzenie w tryb dołączania (sprawdź w instrukcji urządzenia, jeśli nie wiesz jak), a następnie kliknij **Dalej**.\n\n**Uwaga:** urządzenia dodane tutaj są parowane lokalnie z bramką i nie pojawią się w aplikacji GARDENA. Jeśli chcesz nadal korzystać z aplikacji, dodaj urządzenie przez aplikację GARDENA."
+        },
+        "select": {
+          "title": "Wybierz urządzenie do dodania",
+          "data": {
+            "device": "Urządzenie"
+          }
+        }
+      },
+      "abort": {
+        "no_devices_found": "Nie znaleziono urządzeń do dodania. Upewnij się, że urządzenie jest w trybie dołączania, i spróbuj ponownie."
+      },
+      "error": {
+        "inclusion_failed": "Nie udało się dodać urządzenia. Spróbuj ponownie."
+      }
+    }
+  },
+  "services": {
+    "open_valve": {
+      "name": "Otwórz zawór",
+      "description": "Otwiera zawór, opcjonalnie nadpisując skonfigurowany czas tylko dla tego wywołania.",
+      "fields": {
+        "duration": {
+          "name": "Czas trwania",
+          "description": "Jak długo zawór ma być otwarty, w sekundach (60-10800). Domyślnie skonfigurowany czas zaworu."
+        }
+      }
+    },
+    "enable_output": {
+      "name": "Włącz wyjście",
+      "description": "Włącza wyjście gniazda zasilania na określony czas, opcjonalnie nadpisując skonfigurowany czas tylko dla tego wywołania. Wyjście wyłącza się automatycznie po upływie tego czasu.",
+      "fields": {
+        "duration": {
+          "name": "Czas trwania",
+          "description": "Jak długo gniazdo ma być włączone, w sekundach (minimum 1). Domyślnie skonfigurowany czas gniazda."
+        }
+      }
+    },
+    "start_pump": {
+      "name": "Uruchom pompę",
+      "description": "Uruchamia pompę na określony czas, opcjonalnie nadpisując skonfigurowany czas tylko dla tego wywołania. Pompa zatrzymuje się automatycznie po upływie tego czasu.",
+      "fields": {
+        "duration": {
+          "name": "Czas trwania",
+          "description": "Jak długo pompa ma pracować, w sekundach (60-5400). Domyślnie skonfigurowany czas pompy."
+        }
+      }
+    },
+    "start_mowing": {
+      "name": "Rozpocznij koszenie",
+      "description": "Rozpoczyna koszenie na określony czas, opcjonalnie nadpisując domyślny czas tylko dla tego wywołania.",
+      "fields": {
+        "duration": {
+          "name": "Czas trwania",
+          "description": "Jak długo kosić, w pełnych godzinach (1-6). Domyślnie skonfigurowany czas encji."
+        }
+      }
+    }
+  },
+  "issues": {
+    "exclude_failed": {
+      "title": "Nie udało się usunąć {device_id} z bramki",
+      "description": "Home Assistant usunął urządzenie, ale bramka nie potwierdziła usunięcia, więc urządzenie może nadal być sparowane z bramką. Jeśli tak, pojawi się ponownie w Home Assistant, gdy bramka je zgłosi. Usuń je ponownie, gdy bramka będzie online. Aby usunąć je bez Home Assistant, zresetuj urządzenie zgodnie z instrukcją."
+    }
+  },
+  "config": {
+    "step": {
+      "user": {
+        "title": "Połącz z GARDENA smart Gateway",
+        "data": {
+          "host": "Host",
+          "port": "Port",
+          "password": "Hasło"
+        },
+        "data_description": {
+          "host": "Adres IP lub nazwa hosta bramki GARDENA smart Gateway",
+          "password": "Pierwszy blok ID bramki wydrukowanego na spodzie urządzenia (np. `0824b95b` z `0824b95b-996c-48f7-83dc-…`)."
+        }
+      },
+      "discovery_confirm": {
+        "title": "Znaleziono GARDENA smart Gateway",
+        "description": "Czy chcesz skonfigurować bramkę GARDENA smart Gateway **{name}**?",
+        "data": {
+          "host": "Host",
+          "port": "Port",
+          "password": "Hasło"
+        },
+        "data_description": {
+          "host": "Adres IP lub nazwa hosta bramki GARDENA smart Gateway",
+          "password": "Pierwszy blok ID bramki wydrukowanego na spodzie urządzenia (np. `0824b95b` z `0824b95b-996c-48f7-83dc-…`)."
+        }
+      },
+      "reconfigure": {
+        "title": "Zmień ustawienia GARDENA smart Gateway",
+        "data": {
+          "host": "Host",
+          "port": "Port",
+          "password": "Hasło"
+        },
+        "data_description": {
+          "host": "Adres IP lub nazwa hosta bramki GARDENA smart Gateway",
+          "password": "Pierwszy blok ID bramki wydrukowanego na spodzie urządzenia (np. `0824b95b` z `0824b95b-996c-48f7-83dc-…`)."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Nie udało się połączyć z bramką",
+      "invalid_auth": "Nieprawidłowe hasło",
+      "invalid_host": "Nieprawidłowa nazwa hosta lub adres IP",
+      "unknown": "Nieoczekiwany błąd"
+    },
+    "abort": {
+      "already_configured": "Bramka jest już skonfigurowana",
+      "already_in_progress": "Bramka została wykryta automatycznie, kliknij „Dodaj” przy wykrytej integracji",
+      "reconfigure_successful": "Ustawienia GARDENA smart Gateway zaktualizowane"
+    }
+  }
+}
