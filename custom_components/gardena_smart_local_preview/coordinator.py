@@ -23,6 +23,7 @@ from gardena_smart_local_api.messages import (
 )
 from gardena_smart_local_api.sgtin96 import SGTIN96Info
 from gardena_smart_local_api.utils import deep_merge_dict
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -62,9 +63,12 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
+    config_entry: ConfigEntry
+
     def __init__(
         self,
         hass: HomeAssistant,
+        config_entry: ConfigEntry,
         host: str,
         port: int,
         password: str,
@@ -72,6 +76,7 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
         super().__init__(
             hass,
             _LOGGER,
+            config_entry=config_entry,
             name="GARDENA smart local",
         )
         self.host = host
@@ -202,6 +207,24 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
                     self._first_connect_result.cancel()
                 break
             except Exception as err:  # noqa: BLE001 - any transport error must trigger a reconnect
+                if (
+                    isinstance(err, aiohttp.WSServerHandshakeError)
+                    and err.status == 401
+                ):
+                    if self._first_connect_result and not (
+                        self._first_connect_result.done()
+                    ):
+                        # Setup turns this into ConfigEntryAuthFailed.
+                        self._first_connect_result.set_exception(err)
+                    else:
+                        # The password changed while running. Retrying would only
+                        # hammer the gateway; the reauth flow reloads the entry.
+                        _LOGGER.error(
+                            "GARDENA smart Gateway rejected the password, "
+                            "starting reauthentication"
+                        )
+                        self.config_entry.async_start_reauth(self.hass)
+                    break
                 if self._first_connect_result and not self._first_connect_result.done():
                     self._first_connect_result.set_exception(err)
                 if not self._outage_logged:

@@ -15,7 +15,7 @@ import voluptuous_serialize
 from homeassistant.config_entries import SOURCE_IMPORT, SOURCE_USER, SOURCE_ZEROCONF
 from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_PORT
 from homeassistant.core import HomeAssistant
-from homeassistant.data_entry_flow import InvalidData
+from homeassistant.data_entry_flow import FlowResultType, InvalidData
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -540,3 +540,63 @@ async def test_inclusion_subentry_failed(hass: HomeAssistant, mock_coordinator) 
     )
     assert result["type"] == "form"
     assert result["errors"] == {"base": "inclusion_failed"}
+
+
+def _reauth_entry() -> MockConfigEntry:
+    return MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_HOST: MOCK_HOST,
+            CONF_PORT: MOCK_PORT,
+            CONF_PASSWORD: MOCK_PASSWORD,
+        },
+    )
+
+
+@pytest.mark.usefixtures("mock_setup_entry")
+async def test_reauth_success(hass: HomeAssistant) -> None:
+    """Reauthentication stores the new password and keeps the rest."""
+    entry = _reauth_entry()
+    entry.add_to_hass(hass)
+
+    result = await entry.start_reauth_flow(hass)
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "reauth_confirm"
+
+    with patch(PATCH_TRY_CONNECT, return_value=None) as try_connect:
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {CONF_PASSWORD: "new-password"}
+        )
+
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "reauth_successful"
+    assert entry.data[CONF_PASSWORD] == "new-password"
+    assert entry.data[CONF_HOST] == MOCK_HOST
+    assert try_connect.call_args.args[1:] == (MOCK_HOST, MOCK_PORT, "new-password")
+
+
+@pytest.mark.parametrize("error", ["invalid_auth", "cannot_connect", "unknown"])
+@pytest.mark.usefixtures("mock_setup_entry")
+async def test_reauth_errors_can_be_recovered(hass: HomeAssistant, error: str) -> None:
+    """A failed attempt shows the error and the flow still finishes."""
+    entry = _reauth_entry()
+    entry.add_to_hass(hass)
+    result = await entry.start_reauth_flow(hass)
+
+    with patch(PATCH_TRY_CONNECT, return_value=error):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {CONF_PASSWORD: "wrong"}
+        )
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] == {"base": error}
+    assert entry.data[CONF_PASSWORD] == MOCK_PASSWORD
+
+    with patch(PATCH_TRY_CONNECT, return_value=None):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {CONF_PASSWORD: "right"}
+        )
+
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "reauth_successful"
+    assert entry.data[CONF_PASSWORD] == "right"

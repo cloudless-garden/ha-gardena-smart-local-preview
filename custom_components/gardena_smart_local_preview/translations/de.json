@@ -211,6 +211,16 @@
           "password": "Erster Block der Gateway-ID auf der Rückseite des Geräts (z. B. `0824b95b` aus `0824b95b-996c-48f7-83dc-…`)."
         }
       },
+      "reauth_confirm": {
+        "title": "GARDENA smart Gateway erneut authentifizieren",
+        "description": "Das Gateway **{name}** hat das gespeicherte Passwort abgelehnt. Gib das aktuelle Passwort ein.",
+        "data": {
+          "password": "Passwort"
+        },
+        "data_description": {
+          "password": "Das aktuelle Passwort deines GARDENA smart Gateways. Wenn du es nicht geändert hast, ist es der erste Block der Gateway-ID auf der Rückseite des Geräts."
+        }
+      },
       "reconfigure": {
         "title": "GARDENA smart Gateway-Einstellungen aktualisieren",
         "data": {
@@ -233,7 +243,8 @@
     "abort": {
       "already_configured": "Gateway ist bereits konfiguriert",
       "already_in_progress": "Das Gateway wurde anscheinend automatisch erkannt, klicke stattdessen auf \"Hinzufügen\" bei der erkannten Integration",
-      "reconfigure_successful": "GARDENA smart Gateway-Einstellungen aktualisiert"
+      "reconfigure_successful": "GARDENA smart Gateway-Einstellungen aktualisiert",
+      "reauth_successful": "Erneute Authentifizierung erfolgreich"
     }
   }
 }
