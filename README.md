@@ -14,6 +14,7 @@ Home Assistant integration for GARDENA smart devices using local communication (
 
 - Local communication with GARDENA smart devices
 - Real-time updates via WebSocket
+- Mower position on the map, opt-in (SILENO with LONA, SILENO pro/max/free)
 
 ## Enabling WebSocket Support on the Gateway
 
@@ -46,6 +47,27 @@ To disable WebSocket Support, you can run:
 ```txt
 curl -X PUT -H "X-session: $session" -H 'Content-Type: application/json' -d '{"enable": false}' --insecure https://$gateway/websocket_api
 ```
+
+## Mower position
+
+Mowers that can report their position (SILENO city/life with LONA, SILENO
+pro/max/free) get a **Position** `device_tracker` entity and a **Position
+reporting** switch. The mower only sends positions while a reporting timer is
+running on the device, and starting that timer is a command sent to the mower,
+so the integration only does it once you turn the switch on. With the switch
+on, the integration:
+
+- keeps reporting on while the mower is leaving, mowing or returning, renewing
+  the request every 50 minutes (the gateway caps the timer at one hour),
+- lets the timer lapse once the mower is parked or charging, to save radio and
+  battery.
+
+Turning the switch off stops the renewals; a timer that is already running
+lapses on its own within the hour.
+
+The `gps_accuracy` is derived from the raw GNSS horizontal accuracy, which the
+schema does not document a unit for; it is assumed to be millimetres and the raw
+value is kept in the `gnss_horizontal_accuracy` attribute.
 
 ## Installation
 
