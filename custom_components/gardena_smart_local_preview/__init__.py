@@ -33,6 +33,7 @@ from .coordinator import GardenaSmartLocalCoordinator
 PLATFORMS: list[Platform] = [
     Platform.BINARY_SENSOR,
     Platform.BUTTON,
+    Platform.DEVICE_TRACKER,
     Platform.LAWN_MOWER,
     Platform.NUMBER,
     Platform.SELECT,

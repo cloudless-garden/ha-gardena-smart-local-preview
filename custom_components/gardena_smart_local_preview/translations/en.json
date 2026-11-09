@@ -22,6 +22,11 @@
         "name": "Clear schedules"
       }
     },
+    "device_tracker": {
+      "position": {
+        "name": "Position"
+      }
+    },
     "number": {
       "button_watering_duration": {
         "name": "Button watering duration"
@@ -102,6 +107,11 @@
           "downloaded": "Downloaded",
           "updating": "Updating"
         }
+      }
+    },
+    "switch": {
+      "position_reporting": {
+        "name": "Position reporting"
       }
     },
     "valve": {
