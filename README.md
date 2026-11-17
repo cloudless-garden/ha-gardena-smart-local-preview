@@ -28,7 +28,7 @@ You can enable it through the gateway's web interface by visiting e.g.: https://
 >
 > ID: `1234abcd-996c-48f7-83dc-d2d1bac08e7e` → password: `1234abcd`
 
-The advanced options are hidden behind a tiny grey arrow at the bottom of the page.
+The "Local API" toggle can be found under "Advanced Settings".
 
 Alternatively, you can enable WebSocket support using e.g. `curl`:
 ```txt
