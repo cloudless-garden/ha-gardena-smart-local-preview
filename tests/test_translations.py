@@ -31,6 +31,36 @@ PLACEHOLDER = re.compile(r"\{[^}]+\}")
 # strings lists only the first keys.
 MAX_KEYS_IN_WARNING = 10
 
+# Strings that were translated by AI and that no native speaker has confirmed
+# yet. A translation file cannot carry such a marker itself, so they are listed
+# here: add the keys when translating a new string, remove them once a native
+# speaker has approved the text.
+PENDING_REVIEW: dict[str, set[str]] = {
+    "fr": {
+        "config.error.invalid_host",
+        "issues.duplicate_gateway.title",
+        "issues.duplicate_gateway.description",
+        "issues.exclude_failed.title",
+        "issues.exclude_failed.description",
+        "services.enable_output.name",
+        "services.enable_output.description",
+        "services.enable_output.fields.duration.name",
+        "services.enable_output.fields.duration.description",
+        "services.start_mowing.name",
+        "services.start_mowing.description",
+        "services.start_mowing.fields.duration.name",
+        "services.start_mowing.fields.duration.description",
+        "services.start_pump.name",
+        "services.start_pump.description",
+        "services.start_pump.fields.duration.name",
+        "services.start_pump.fields.duration.description",
+    },
+    "pl": {
+        "issues.duplicate_gateway.title",
+        "issues.duplicate_gateway.description",
+    },
+}
+
 OTHER_LANGUAGES: list[str] = []
 for _path in sorted(TRANSLATIONS_DIR.glob("*.json")):
     if _path.stem != "en":
@@ -99,3 +129,11 @@ def test_same_placeholders_as_english(language: str) -> None:
             mismatches.append(key)
 
     assert mismatches == []
+
+
+def test_pending_review_lists_translated_keys() -> None:
+    for language, keys in PENDING_REVIEW.items():
+        assert language in OTHER_LANGUAGES, f"no {language}.json"
+        assert sorted(keys - set(_load(language))) == [], (
+            f"not translated in {language}.json"
+        )

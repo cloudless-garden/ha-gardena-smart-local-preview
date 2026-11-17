@@ -53,9 +53,12 @@ header from an existing file of the same type rather than retyping it.
   connection and device state), `entity.py` (shared entity base class and
   per-device config-subentry helpers), `const.py`, `config_flow.py`.
 - `custom_components/gardena_smart_local_preview/translations/` —
-  `en.json`, `de.json`, `fr.json`, `pl.json`. Keep all four in sync: a new
-  config string, entity name, or service needs an entry in every file, not
-  just `en.json`.
+  `en.json`, `de.json`, `fr.json`, `pl.json`. A new config string, entity
+  name, or service goes into `en.json` first. A missing translation only
+  produces a CI warning, so add the other languages when you can, for example
+  with an AI translation, and never copy the English text. A translation made
+  by AI is listed in `PENDING_REVIEW` in `tests/test_translations.py` until a
+  native speaker has approved it.
 - `tests/` — pytest with `pytest-homeassistant-custom-component`.
   `asyncio_mode = "auto"` is set in `pyproject.toml`, so async test functions
   do not need `@pytest.mark.asyncio`.
