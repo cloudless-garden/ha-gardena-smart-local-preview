@@ -3,18 +3,11 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
-import base64
 import logging
 from dataclasses import dataclass
 
-import aiohttp
-from gardena_smart_local_api.devices import (
-    Device,
-    DeviceMap,
-    build_discovery_obj,
-    build_inclusion_obj,
-    create_devices_from_messages,
-)
+from gardena_smart_local_api.client import GatewayClient, RequestError
+from gardena_smart_local_api.devices import Device, DeviceMap, build_inclusion_obj
 from gardena_smart_local_api.messages import (
     EgressMessageList,
     Event,
@@ -25,11 +18,8 @@ from gardena_smart_local_api.sgtin96 import SGTIN96Info
 from gardena_smart_local_api.utils import deep_merge_dict
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
-from homeassistant.util.ssl import get_default_no_verify_context
-from yarl import URL
 
 INCLUDE_REPLY_TIMEOUT = 10
 EXCLUDE_REPLY_TIMEOUT = 10
@@ -38,12 +28,6 @@ INCLUSION_TIMEOUT = 30
 FIRMWARE_REPLY_TIMEOUT = 10
 COMMAND_REPLY_TIMEOUT = 10
 DISCOVERY_REPLY_TIMEOUT = 30
-# The first connect is only reported as successful once discovery finishes,
-# so the outer wait must outlast a full discovery round.
-INITIAL_CONNECT_TIMEOUT = DISCOVERY_REPLY_TIMEOUT + 10
-# Wait before reconnecting, whether the socket dropped with an error or was
-# closed cleanly, so a gateway that flaps does not spin this loop.
-RECONNECT_DELAY = 5
 # A device included outside our own inclusion flow (e.g. via the official
 # app while we're already connected) arrives as a burst of ordinary events
 # for a device_id we don't know yet. Debounce before re-running discovery so
@@ -81,25 +65,22 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
         )
         self.host = host
         self.port = port
-        self.password = password
-        self.uri = URL.build(scheme="wss", host=host, port=port)
-
-        auth_string = f"_:{password}"
-        auth_bytes = auth_string.encode("utf-8")
-        self.auth_b64 = base64.b64encode(auth_bytes).decode("ascii")
-
-        self._ws = None
-        self._task = None
+        # Keeps the connection open and reconnects on its own. After a rejected
+        # password it stops instead of hammering the gateway and starts the
+        # reauthentication flow, which reloads the entry.
+        self.client = GatewayClient(
+            host,
+            port,
+            password,
+            session=async_get_clientsession(hass),
+            on_connect=self._async_on_connect,
+            on_event=self._async_on_event,
+            on_disconnect=self._on_disconnect,
+            on_auth_failed=self._on_auth_failed,
+        )
         self._devices: DeviceMap = DeviceMap({})
-        self._ssl_context = None
-        self._msg_queue: asyncio.Queue[str] = asyncio.Queue()
-        self._pending_replies: dict[str, asyncio.Future[Reply]] = {}
         self._includable_devices: dict[str, IncludableDeviceInfo] = {}
         self._includable_timeouts: dict[str, asyncio.TimerHandle] = {}
-        self._first_connect_result: asyncio.Future[None] | None = None
-        # True once an outage has been logged at ERROR, so the reconnect loop
-        # keeps quiet until the gateway is reachable again.
-        self._outage_logged = False
         # Devices with a command reply still outstanding. While a device is
         # in here, incoming Events for it are merged into self._devices but
         # not broadcast — the gateway reports state changes (e.g. a valve
@@ -118,19 +99,16 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
         return self._devices
 
     @property
+    def uri(self) -> str:
+        return self.client.uri
+
+    @property
     def connected(self) -> bool:
         """Return True if the WebSocket to the gateway is currently connected."""
-        return self._ws is not None and not self._ws.closed
+        return self.client.connected
 
     async def async_connect(self) -> None:
-        if self._ssl_context is None:
-            self._ssl_context = get_default_no_verify_context()
-        self._first_connect_result = self.hass.loop.create_future()
-        self._task = self.hass.async_create_background_task(
-            self._ws_loop(), "gardena_smart_local_preview_websocket"
-        )
-        async with asyncio.timeout(INITIAL_CONNECT_TIMEOUT):
-            await self._first_connect_result
+        await self.client.connect()
 
     async def async_disconnect(self) -> None:
         for handle in self._includable_timeouts.values():
@@ -139,199 +117,27 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
         if self._unknown_device_discovery_handle is not None:
             self._unknown_device_discovery_handle.cancel()
             self._unknown_device_discovery_handle = None
-        if self._task:
-            self._task.cancel()
-            try:
-                await self._task
-            except asyncio.CancelledError:
-                pass
+        await self.client.disconnect()
 
-    async def _ws_loop(self) -> None:
-        while True:
-            reader_task = None
-            consumer_task = None
-            reconnect = False
-            try:
-                _LOGGER.debug("Connecting to GARDENA smart Gateway at %s", self.uri)
-                session = async_get_clientsession(self.hass)
-                async with session.ws_connect(
-                    self.uri,
-                    ssl=self._ssl_context,
-                    heartbeat=30,
-                    headers={"Authorization": f"Basic {self.auth_b64}"},
-                ) as ws:
-                    self._ws = ws
-                    if self._outage_logged:
-                        _LOGGER.info(
-                            "Reconnected to GARDENA smart Gateway at %s", self.uri
-                        )
-                        self._outage_logged = False
-                    else:
-                        _LOGGER.info(
-                            "Connected to GARDENA smart Gateway at %s", self.uri
-                        )
+    @callback
+    def _on_auth_failed(self) -> None:
+        self.config_entry.async_start_reauth(self.hass)
 
-                    reader_task = self.hass.async_create_background_task(
-                        self._ws_reader(ws),
-                        "gardena_smart_local_preview_ws_reader",
-                    )
-                    consumer_task = self.hass.async_create_background_task(
-                        self._msg_consumer(),
-                        "gardena_smart_local_preview_msg_consumer",
-                    )
+    async def _async_on_connect(self) -> None:
+        """Discover the devices after every (re)connect.
 
-                    await self._do_discovery()
+        The first connect only succeeds once this finishes, so a gateway that
+        does not answer discovery fails the setup.
+        """
+        await self._do_discovery()
 
-                    if (
-                        self._first_connect_result
-                        and not self._first_connect_result.done()
-                    ):
-                        self._first_connect_result.set_result(None)
-
-                    # Block until either worker exits (disconnect / error), then
-                    # re-raise its exception, if any, so we reconnect below.
-                    done, _pending = await asyncio.wait(
-                        (reader_task, consumer_task),
-                        return_when=asyncio.FIRST_COMPLETED,
-                    )
-                    for task in done:
-                        task.result()
-                    _LOGGER.info(
-                        "Disconnected from GARDENA smart Gateway, reconnecting"
-                    )
-                    reconnect = True
-
-            except asyncio.CancelledError:
-                _LOGGER.debug("WebSocket loop cancelled")
-                if self._first_connect_result and not self._first_connect_result.done():
-                    self._first_connect_result.cancel()
-                break
-            except Exception as err:  # noqa: BLE001 - any transport error must trigger a reconnect
-                if (
-                    isinstance(err, aiohttp.WSServerHandshakeError)
-                    and err.status == 401
-                ):
-                    if self._first_connect_result and not (
-                        self._first_connect_result.done()
-                    ):
-                        # Setup turns this into ConfigEntryAuthFailed.
-                        self._first_connect_result.set_exception(err)
-                    else:
-                        # The password changed while running. Retrying would only
-                        # hammer the gateway; the reauth flow reloads the entry.
-                        _LOGGER.error(
-                            "GARDENA smart Gateway rejected the password, "
-                            "starting reauthentication"
-                        )
-                        self.config_entry.async_start_reauth(self.hass)
-                    break
-                if self._first_connect_result and not self._first_connect_result.done():
-                    self._first_connect_result.set_exception(err)
-                if not self._outage_logged:
-                    _LOGGER.error("Lost connection to GARDENA smart Gateway: %s", err)
-                    self._outage_logged = True
-                else:
-                    _LOGGER.debug("Reconnect to GARDENA smart Gateway failed: %s", err)
-                reconnect = True
-            finally:
-                self._ws = None
-                for task in (reader_task, consumer_task):
-                    if task and not task.done():
-                        task.cancel()
-                        try:
-                            await task
-                        except (asyncio.CancelledError, Exception) as err:  # noqa: BLE001 - best-effort cleanup, cancellation is expected
-                            _LOGGER.debug("Error awaiting cancelled task: %s", err)
-                # Frames still queued belong to the closed socket; the next
-                # connection's consumer would otherwise apply them as stale
-                # state or unknown devices before the new discovery completes.
-                self._msg_queue = asyncio.Queue()
-                # Fail pending reply waiters with a connection error so callers
-                # handle it as a transport failure instead of task cancellation.
-                for fut in self._pending_replies.values():
-                    if not fut.done():
-                        fut.set_exception(
-                            HomeAssistantError(
-                                "WebSocket disconnected before a reply arrived"
-                            )
-                        )
-                self._pending_replies.clear()
-                self._pending_reply_devices.clear()
-                # Let entities re-check availability now that we're disconnected.
-                self.async_update_listeners()
-
-            # Back off only after the socket has been torn down, so the
-            # coordinator does not report a live connection during the wait.
-            if reconnect:
-                await asyncio.sleep(RECONNECT_DELAY)
-
-    async def _ws_reader(self, ws: aiohttp.ClientWebSocketResponse) -> None:
-        async for msg in ws:
-            match msg.type:
-                case aiohttp.WSMsgType.TEXT:
-                    await self._msg_queue.put(msg.data)
-                case aiohttp.WSMsgType.BINARY:
-                    await self._msg_queue.put(msg.data.decode("utf-8"))
-                case aiohttp.WSMsgType.ERROR:
-                    _LOGGER.error("WebSocket error: %s", ws.exception())
-                    break
-                case aiohttp.WSMsgType.CLOSED | aiohttp.WSMsgType.CLOSING:
-                    break
-        _LOGGER.warning(
-            "Connection to GARDENA smart Gateway closed (close code: %s)", ws.close_code
-        )
-
-    async def _msg_consumer(self) -> None:
-        try:
-            while True:
-                raw = await self._msg_queue.get()
-                try:
-                    messages = IngressMessageList.model_validate_json(raw)
-                except Exception:  # noqa: BLE001 - malformed message, ignore and keep reading
-                    _LOGGER.debug(
-                        "Ignoring non-list message from GARDENA smart Gateway: %s", raw
-                    )
-                    continue
-
-                passthrough: IngressMessageList = IngressMessageList([])
-                for msg in messages:
-                    if (
-                        isinstance(msg, Reply)
-                        and msg.request_id in self._pending_replies
-                    ):
-                        fut = self._pending_replies.pop(msg.request_id)
-                        if not fut.done():
-                            fut.set_result(msg)
-                    else:
-                        passthrough.append(msg)
-
-                if passthrough:
-                    await self._handle_messages(passthrough)
-        except asyncio.CancelledError:
-            raise
-        except Exception:
-            _LOGGER.exception(
-                "Message consumer failed, incoming events are no longer processed"
-            )
-            raise
+    @callback
+    def _on_disconnect(self) -> None:
+        """Let entities re-check their availability once the connection drops."""
+        self.async_update_listeners()
 
     async def _do_discovery(self, broadcast: bool = True) -> None:
-        discovery = build_discovery_obj()
-        n = len(list(discovery))
-        _LOGGER.debug(
-            "Sent discovery request to GARDENA smart Gateway, awaiting %d replies", n
-        )
-
-        try:
-            replies = await self.send_request(
-                "discovery", discovery, wait_for_response_sec=DISCOVERY_REPLY_TIMEOUT
-            )
-        except TimeoutError:
-            raise RuntimeError(
-                f"Timed out waiting for discovery replies from GARDENA smart Gateway (expected {n})"
-            )
-
-        devices = await create_devices_from_messages(replies)
+        devices = await self.client.discover_devices(DISCOVERY_REPLY_TIMEOUT)
         self._update_devices(devices)
         if broadcast:
             self.async_set_updated_data(self._devices)
@@ -364,34 +170,29 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
             # lets a continued event burst schedule an overlapping run.
             self._unknown_device_discovery_handle = None
 
-    async def _handle_messages(self, messages: IngressMessageList) -> None:
-        _LOGGER.debug("Handling %d message(s)", len(messages))
+    async def _async_on_event(self, event: Event) -> None:
+        try:
+            device_id = await self._handle_event(event)
+        except Exception as err:  # noqa: BLE001 - one bad event must not stop the rest
+            _LOGGER.warning("Error handling event %s: %s", event, err)
+            return
 
-        updated_device_ids: set[str] = set()
-
-        for msg in messages:
-            if not isinstance(msg, Event):
-                continue
-            try:
-                await self._handle_event(msg, updated_device_ids)
-            except Exception as err:  # noqa: BLE001 - one bad event must not drop the rest of the frame
-                _LOGGER.warning("Error handling event %s: %s", msg, err)
-
-        # Devices with a command in flight are merged above but not
-        # broadcast yet — send_request() flushes them once the reply for
-        # that command confirms the settled state.
-        if updated_device_ids - self._pending_reply_devices.keys():
+        # A device with a command in flight is merged but not broadcast yet:
+        # send_request() flushes it once the reply for that command confirms
+        # the settled state.
+        if device_id is not None and device_id not in self._pending_reply_devices:
             self.async_set_updated_data(self._devices)
 
-    async def _handle_event(self, msg: Event, updated_device_ids: set[str]) -> None:
+    async def _handle_event(self, msg: Event) -> str | None:
+        """Apply an event to the device map, returning the device it updated."""
         if msg.entity.path.object_name == "includable_device":
             await self._handle_includable_event(msg)
-            return
+            return None
 
         device_id = msg.entity.device
         if not device_id:
             _LOGGER.debug("Event does not have device ID, ignoring: %s", msg)
-            return
+            return None
 
         if (
             msg.op == "delete"
@@ -411,12 +212,13 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
                     device_id,
                     device.is_online,
                 )
-            updated_device_ids.add(device_id)
+            return device_id
         elif msg.op != "delete":
             # A device we don't know yet, e.g. included via the official app
             # while we were already connected. Not a delete op, so it's not
             # just a leftover event for an already-excluded device.
             self._schedule_unknown_device_discovery(device_id)
+        return None
 
     def _expire_includable(self, instance_id: str) -> None:
         _LOGGER.debug("Includable device %s heartbeat timed out, removing", instance_id)
@@ -506,49 +308,41 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
         device_id = info.device_id
         request = build_inclusion_obj(info.service, instance_id)
         try:
-            replies = await self.send_request(
+            await self.send_request(
                 instance_id, request, wait_for_response_sec=INCLUDE_REPLY_TIMEOUT
             )
         except TimeoutError:
             _LOGGER.error("Timeout waiting for inclusion reply for %s", device_id)
             return None
+        except RequestError as err:
+            _LOGGER.error("Inclusion of device %s rejected: %s", device_id, err)
+            return None
         except Exception as err:  # noqa: BLE001 - report failure to the config flow instead of raising
             _LOGGER.error("Error including device %s: %s", instance_id, err)
             return None
 
-        for msg in replies:
-            if isinstance(msg, Reply) and msg.success:
-                for _ in range(INCLUSION_TIMEOUT):
-                    if instance_id not in self._includable_devices:
-                        break
-                    await asyncio.sleep(1)
-                else:
-                    _LOGGER.error(
-                        "Timeout waiting for inclusion to complete for %s", device_id
-                    )
-                    return None
-                _LOGGER.info(
-                    "Device %s (instance %s) included successfully",
-                    info.device_id,
-                    instance_id,
-                )
-                try:
-                    # broadcast=False: the subentry doesn't exist yet at this
-                    # point; the caller schedules async_set_updated_data as a
-                    # task so it runs after _async_finish_flow adds the subentry.
-                    await self._do_discovery(broadcast=False)
-                except Exception as err:  # noqa: BLE001 - inclusion already succeeded, don't fail it over this
-                    _LOGGER.warning("Re-discovery after inclusion failed: %s", err)
-                    return None
-                if info.device_id not in self._devices:
-                    _LOGGER.warning(
-                        "Included device %s not found in discovery", info.device_id
-                    )
-                    return None
-                return info.device_id
-
-        _LOGGER.error("Inclusion of device %s failed", info.device_id)
-        return None
+        for _ in range(INCLUSION_TIMEOUT):
+            if instance_id not in self._includable_devices:
+                break
+            await asyncio.sleep(1)
+        else:
+            _LOGGER.error("Timeout waiting for inclusion to complete for %s", device_id)
+            return None
+        _LOGGER.info(
+            "Device %s (instance %s) included successfully", device_id, instance_id
+        )
+        try:
+            # broadcast=False: the subentry doesn't exist yet at this
+            # point; the caller schedules async_set_updated_data as a
+            # task so it runs after _async_finish_flow adds the subentry.
+            await self._do_discovery(broadcast=False)
+        except Exception as err:  # noqa: BLE001 - inclusion already succeeded, don't fail it over this
+            _LOGGER.warning("Re-discovery after inclusion failed: %s", err)
+            return None
+        if device_id not in self._devices:
+            _LOGGER.warning("Included device %s not found in discovery", device_id)
+            return None
+        return device_id
 
     @callback
     def async_drop_device(self, device_id: str) -> None:
@@ -568,23 +362,21 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
         # downstream listeners (e.g. subentry auto-creation).
         self.async_drop_device(device_id)
         try:
-            replies = await self.send_request(
+            await self.send_request(
                 device_id, request, wait_for_response_sec=EXCLUDE_REPLY_TIMEOUT
             )
         except TimeoutError:
             _LOGGER.error("Timeout waiting for exclusion reply for %s", device_id)
             return False
+        except RequestError as err:
+            _LOGGER.error("Exclusion of device %s rejected: %s", device_id, err)
+            return False
         except Exception as err:  # noqa: BLE001 - report failure to the config flow instead of raising
             _LOGGER.error("Error excluding device %s: %s", device_id, err)
             return False
 
-        for msg in replies:
-            if isinstance(msg, Reply) and msg.success:
-                _LOGGER.info("Device %s excluded successfully", device_id)
-                return True
-
-        _LOGGER.error("Exclusion of device %s failed", device_id)
-        return False
+        _LOGGER.info("Device %s excluded successfully", device_id)
+        return True
 
     async def async_refresh_firmware(self, device_id: str) -> None:
         device = self._devices.get(device_id)
@@ -602,6 +394,9 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
         except TimeoutError:
             _LOGGER.debug("Timeout refreshing firmware state for %s", device_id)
             return
+        except RequestError as err:
+            # One of the requests failed; the others may still have succeeded.
+            replies = err.replies
         except Exception as err:  # noqa: BLE001 - best-effort refresh, must not disrupt the coordinator
             _LOGGER.debug("Error refreshing firmware state for %s: %s", device_id, err)
             return
@@ -648,44 +443,29 @@ class GardenaSmartLocalCoordinator(DataUpdateCoordinator[DeviceMap]):
         request: EgressMessageList,
         wait_for_response_sec: float = 0,
     ) -> IngressMessageList:
-        if not self._ws or self._ws.closed:
-            raise HomeAssistantError(
-                f"Cannot send request to device {device_id}: WebSocket not connected"
-            )
+        """Send a request to the gateway, optionally waiting for its replies.
 
-        if wait_for_response_sec > 0:
-            loop = asyncio.get_running_loop()
-            pending_ids = {
-                req.request_id for req in request.root if req.request_id is not None
-            }
-            futures: dict[str, asyncio.Future[Reply]] = {
-                rid: loop.create_future() for rid in pending_ids
-            }
-            self._pending_replies.update(futures)
-            self._pending_reply_devices[device_id] = (
-                self._pending_reply_devices.get(device_id, 0) + 1
-            )
+        Raises `RequestError` if the gateway rejects the request, `TimeoutError`
+        if it does not answer in time, and `ConnectionError` if the connection
+        is not open or drops.
+        """
+        if wait_for_response_sec <= 0:
+            await self.client.send_request(request, timeout=None)
+            _LOGGER.debug("Sent request to device %s: %s", device_id, request)
+            return IngressMessageList([])
 
-            try:
-                await self._ws.send_str(request.model_dump_json())
-                _LOGGER.debug("Sent request to device %s: %s", device_id, request)
-
-                async with asyncio.timeout(wait_for_response_sec):
-                    replies = await asyncio.gather(*futures.values())
-
-                return IngressMessageList(list(replies))
-            finally:
-                for rid in pending_ids:
-                    self._pending_replies.pop(rid, None)
-                remaining = self._pending_reply_devices.get(device_id, 1) - 1
-                if remaining <= 0:
-                    self._pending_reply_devices.pop(device_id, None)
-                    # Last outstanding command for this device settled —
-                    # broadcast the confirmed state now.
-                    self.async_set_updated_data(self._devices)
-                else:
-                    self._pending_reply_devices[device_id] = remaining
-
-        await self._ws.send_str(request.model_dump_json())
-        _LOGGER.debug("Sent request to device %s: %s", device_id, request)
-        return IngressMessageList([])
+        self._pending_reply_devices[device_id] = (
+            self._pending_reply_devices.get(device_id, 0) + 1
+        )
+        try:
+            _LOGGER.debug("Sending request to device %s: %s", device_id, request)
+            return await self.client.send_request(request, wait_for_response_sec)
+        finally:
+            remaining = self._pending_reply_devices.get(device_id, 1) - 1
+            if remaining <= 0:
+                self._pending_reply_devices.pop(device_id, None)
+                # Last outstanding command for this device settled —
+                # broadcast the confirmed state now.
+                self.async_set_updated_data(self._devices)
+            else:
+                self._pending_reply_devices[device_id] = remaining

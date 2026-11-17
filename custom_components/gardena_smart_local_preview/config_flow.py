@@ -3,15 +3,18 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
-import base64
-import contextlib
 import logging
 from collections.abc import Mapping
 from typing import Any
 
 import aiohttp
 import voluptuous as vol
-from cryptography import x509
+from gardena_smart_local_api.client import (
+    AuthenticationError,
+    GatewayClient,
+    fetch_certificate,
+    hostname_from_certificate,
+)
 from homeassistant.config_entries import (
     ConfigEntry,
     ConfigFlow,
@@ -25,7 +28,6 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
 from homeassistant.helpers.typing import ConfigType
-from homeassistant.util.ssl import get_default_no_verify_context
 from yarl import URL
 
 from .const import DEFAULT_PORT, DOMAIN
@@ -236,40 +238,29 @@ class GardenaSmartLocalConfigFlow(ConfigFlow, domain=DOMAIN):
 async def _async_try_connect(
     hass: HomeAssistant, host: str, port: int, password: str
 ) -> str | None:
-    ssl_context = get_default_no_verify_context()
-
-    auth_b64 = base64.b64encode(f"_:{password}".encode()).decode("ascii")
-
     try:
-        session = async_get_clientsession(hass)
-        # ClientWSTimeout only bounds receive(); this probe never receives a
-        # frame, so an unreachable host would otherwise hang on aiohttp's
-        # much longer default. Cap the whole attempt.
-        async with (
-            asyncio.timeout(10),
-            session.ws_connect(
-                URL.build(scheme="wss", host=host, port=port),
-                ssl=ssl_context,
-                headers={"Authorization": f"Basic {auth_b64}"},
-            ) as ws,
-        ):
-            await ws.close()
-    except aiohttp.WSServerHandshakeError as err:
-        if err.status == 401:
-            return "invalid_auth"
-        _LOGGER.debug("Handshake error connecting to %s:%s", host, port, exc_info=True)
-        return "cannot_connect"
-    except (aiohttp.ClientConnectionError, TimeoutError, OSError):
-        _LOGGER.debug("Error connecting to %s:%s", host, port, exc_info=True)
-        return "cannot_connect"
-    except ValueError:
         # yarl rejects a host that is empty or contains spaces/control chars.
+        URL.build(scheme="wss", host=host, port=port)
+    except ValueError:
         _LOGGER.debug("Invalid host %r", host)
         return "invalid_host"
+
+    client = GatewayClient(host, port, password, session=async_get_clientsession(hass))
+    try:
+        # The client's own timeout also covers a discovery, which this probe
+        # never runs, so an unreachable host would wait much longer than needed.
+        async with asyncio.timeout(10):
+            await client.connect()
+    except AuthenticationError:
+        return "invalid_auth"
+    except (aiohttp.ClientError, TimeoutError, OSError):
+        _LOGGER.debug("Error connecting to %s:%s", host, port, exc_info=True)
+        return "cannot_connect"
     except Exception:
         _LOGGER.exception("Unexpected error connecting to %s:%s", host, port)
         return "unknown"
 
+    await client.disconnect()
     return None
 
 
@@ -283,37 +274,12 @@ async def async_extract_hostname_from_cert(host: str, port: int) -> str | None:
     gateway is unreachable or runs firmware whose certificate has no such name.
     """
     try:
-        async with asyncio.timeout(10):
-            _, writer = await asyncio.open_connection(
-                host, port, ssl=get_default_no_verify_context()
-            )
-    except (OSError, TimeoutError):
+        certificate = await fetch_certificate(host, port)
+    except (OSError, TimeoutError, ValueError):
         _LOGGER.debug("Could not read the certificate of %s:%s", host, port)
         return None
 
-    try:
-        ssl_object = writer.get_extra_info("ssl_object")
-        der = ssl_object.getpeercert(binary_form=True) if ssl_object else None
-    finally:
-        writer.close()
-        with contextlib.suppress(OSError):
-            await writer.wait_closed()
-
-    if not der:
-        return None
-
-    certificate = x509.load_der_x509_certificate(der)
-    try:
-        alt_names = certificate.extensions.get_extension_for_class(
-            x509.SubjectAlternativeName
-        )
-    except x509.ExtensionNotFound:
-        return None
-
-    for dns_name in alt_names.value.get_values_for_type(x509.DNSName):
-        if dns_name.endswith(".local"):
-            return dns_name.removesuffix(".local")
-    return None
+    return hostname_from_certificate(certificate)
 
 
 class GardenaInclusionSubentryFlow(ConfigSubentryFlow):
