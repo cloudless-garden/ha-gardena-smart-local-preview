@@ -5,9 +5,9 @@
 import logging
 from types import MappingProxyType
 
-import aiohttp
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
+from gardena_smart_local_api.client import AuthenticationError
 from homeassistant.config_entries import (
     SIGNAL_CONFIG_ENTRY_CHANGED,
     SOURCE_IMPORT,
@@ -147,7 +147,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await coordinator.async_connect()
     except Exception as err:
         await coordinator.async_disconnect()
-        if isinstance(err, aiohttp.WSServerHandshakeError) and err.status == 401:
+        if isinstance(err, AuthenticationError):
             raise ConfigEntryAuthFailed(
                 "The GARDENA smart Gateway rejected the configured password"
             ) from err
