@@ -182,6 +182,10 @@
     "exclude_failed": {
       "title": "Nie udało się usunąć {device_id} z bramki",
       "description": "Home Assistant usunął urządzenie, ale bramka nie potwierdziła usunięcia, więc urządzenie może nadal być sparowane z bramką. Jeśli tak, pojawi się ponownie w Home Assistant, gdy bramka je zgłosi. Usuń je ponownie, gdy bramka będzie online. Aby usunąć je bez Home Assistant, zresetuj urządzenie zgodnie z instrukcją."
+    },
+    "duplicate_gateway": {
+      "title": "Bramka {hostname} jest skonfigurowana dwukrotnie",
+      "description": "Ten wpis i inny wpis łączą się z bramką {hostname}, więc nie można było przełączyć tego wpisu na stabilny identyfikator bramki. Usuń jeden z dwóch wpisów."
     }
   },
   "config": {
