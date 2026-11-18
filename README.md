@@ -24,7 +24,7 @@ You can enable it through the gateway's web interface by visiting e.g.: https://
 > You can also use the IP address found under "Garden Profile" in the GARDENA smart system app.
 
 > [!NOTE]
-> The password is the first block of the gateway ID printed on the back of the device, e.g.:
+> The default password is the first block of the gateway ID printed on the back of the device, e.g.:
 >
 > ID: `1234abcd-996c-48f7-83dc-d2d1bac08e7e` → password: `1234abcd`
 
