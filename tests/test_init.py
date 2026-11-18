@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import aiohttp
+from gardena_smart_local_api.client import AuthenticationError
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_PORT
 from homeassistant.core import HomeAssistant
@@ -166,7 +166,7 @@ async def test_setup_rejected_password_starts_reauth(hass: HomeAssistant) -> Non
 
     with patch(
         "custom_components.gardena_smart_local_preview.GardenaSmartLocalCoordinator.async_connect",
-        side_effect=aiohttp.WSServerHandshakeError(MagicMock(), (), status=401),
+        side_effect=AuthenticationError("rejected"),
     ):
         await hass.config_entries.async_setup(entry.entry_id)
 

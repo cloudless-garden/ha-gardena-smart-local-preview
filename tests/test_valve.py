@@ -9,7 +9,8 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from gardena_smart_local_api.messages import Reply
+from gardena_smart_local_api.client import RequestError
+from gardena_smart_local_api.messages import IngressMessageList, Reply
 from homeassistant.exceptions import HomeAssistantError
 
 from custom_components.gardena_smart_local_preview.const import (
@@ -108,9 +109,36 @@ async def test_rejected_command_raises(
 ) -> None:
     """A negative reply from the gateway surfaces as an error."""
     coordinator.send_request = AsyncMock(
-        return_value=[Reply(request_id="1", success=False)]
+        side_effect=RequestError(
+            "The request failed",
+            IngressMessageList([Reply(request_id="1", success=False)]),
+        )
     )
     valve = GardenaValve(coordinator, entry, mock_device, 0)
 
-    with pytest.raises(HomeAssistantError):
+    with pytest.raises(HomeAssistantError, match="rejected"):
+        await valve.async_close_valve()
+
+
+async def test_command_timeout_raises(
+    coordinator: MagicMock, entry: MagicMock, mock_device: MagicMock
+) -> None:
+    """A command the gateway never confirms is reported as an error."""
+    coordinator.send_request = AsyncMock(side_effect=TimeoutError)
+    valve = GardenaValve(coordinator, entry, mock_device, 0)
+
+    with pytest.raises(HomeAssistantError, match="Timed out"):
+        await valve.async_close_valve()
+
+
+async def test_command_without_connection_raises(
+    coordinator: MagicMock, entry: MagicMock, mock_device: MagicMock
+) -> None:
+    """A command sent while the gateway is unreachable is reported as an error."""
+    coordinator.send_request = AsyncMock(
+        side_effect=ConnectionError("WebSocket not connected")
+    )
+    valve = GardenaValve(coordinator, entry, mock_device, 0)
+
+    with pytest.raises(HomeAssistantError, match="not connected"):
         await valve.async_close_valve()
