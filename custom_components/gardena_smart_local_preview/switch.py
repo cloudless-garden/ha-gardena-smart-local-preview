@@ -13,6 +13,7 @@ from gardena_smart_local_api.devices import PowerAdapter, Pump
 from gardena_smart_local_api.devices.device import Device
 from homeassistant.components.switch import SwitchDeviceClass, SwitchEntity
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_platform
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
@@ -21,7 +22,9 @@ from .coordinator import GardenaSmartLocalCoordinator
 from .entity import (
     EntityFactories,
     GardenaEntity,
+    async_set_position_reporting_enabled,
     async_setup_device_entities,
+    get_position_reporting_enabled,
     get_power_duration_minutes,
     get_pump_duration_minutes,
 )
@@ -72,6 +75,10 @@ async def async_setup_entry(
             entities["power"] = partial(GardenaPowerSwitch, coordinator, entry, device)
         elif isinstance(device, Pump):
             entities["pump"] = partial(GardenaPumpSwitch, coordinator, entry, device)
+        if hasattr(device, "build_start_position_reporting_obj"):
+            entities["position_reporting"] = partial(
+                GardenaPositionReportingSwitch, coordinator, entry, device
+            )
         return entities
 
     async_setup_device_entities(
@@ -156,3 +163,43 @@ class GardenaPumpSwitch(GardenaEntity, SwitchEntity):
     async def async_turn_off(self, **kwargs: Any) -> None:
         await self._send_confirmed_command(self._device.build_stop_obj())
         _LOGGER.info("Turning off pump %s", self._device.id)
+
+
+class GardenaPositionReportingSwitch(GardenaEntity, SwitchEntity):
+    _attr_entity_category = EntityCategory.CONFIG
+
+    def __init__(
+        self,
+        coordinator: GardenaSmartLocalCoordinator,
+        entry: ConfigEntry,
+        device: Device,
+    ) -> None:
+        super().__init__(coordinator, device)
+        self._entry = entry
+        self._attr_unique_id = f"{device.id}_position_reporting"
+        self._attr_translation_key = "position_reporting"
+        self._attr_icon = "mdi:crosshairs-gps"
+
+    # Stored in the config subentry rather than read from the device, so it
+    # stays settable while the gateway or the device itself is unreachable.
+    @property
+    def available(self) -> bool:
+        return True
+
+    @property
+    def is_on(self) -> bool:
+        return get_position_reporting_enabled(self._entry, self._device.id)
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        async_set_position_reporting_enabled(
+            self.hass, self._entry, self._device.id, True
+        )
+        self.async_write_ha_state()
+        _LOGGER.info("Enabled position reporting for mower %s", self._device.id)
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        async_set_position_reporting_enabled(
+            self.hass, self._entry, self._device.id, False
+        )
+        self.async_write_ha_state()
+        _LOGGER.info("Disabled position reporting for mower %s", self._device.id)

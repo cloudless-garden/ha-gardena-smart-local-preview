@@ -19,6 +19,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
     CONF_MOWER_DURATION,
+    CONF_POSITION_REPORTING,
     CONF_POWER_DURATION,
     CONF_PUMP_DURATION,
     CONF_VALVE_DURATIONS,
@@ -201,6 +202,31 @@ def async_set_mower_duration_hours(
     subentry = entry.subentries[subentry_id]
     hass.config_entries.async_update_subentry(
         entry, subentry, data={**subentry.data, CONF_MOWER_DURATION: hours}
+    )
+
+
+def get_position_reporting_enabled(entry: ConfigEntry, device_id: str) -> bool:
+    # Off unless the user turned it on: reporting makes the integration send
+    # commands to the mower on its own.
+    subentry_id = find_device_subentry_id(entry, device_id)
+    if subentry_id is None:
+        return False
+    return entry.subentries[subentry_id].data.get(CONF_POSITION_REPORTING) is True
+
+
+@callback
+def async_set_position_reporting_enabled(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    device_id: str,
+    enabled: bool,
+) -> None:
+    subentry_id = find_device_subentry_id(entry, device_id)
+    if subentry_id is None:
+        return
+    subentry = entry.subentries[subentry_id]
+    hass.config_entries.async_update_subentry(
+        entry, subentry, data={**subentry.data, CONF_POSITION_REPORTING: enabled}
     )
 
 
