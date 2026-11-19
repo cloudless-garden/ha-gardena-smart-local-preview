@@ -1,0 +1,79 @@
+# SPDX-FileCopyrightText: 2026 GARDENA GmbH
+#
+# SPDX-License-Identifier: Apache-2.0
+
+name: Bug report
+description: Something does not work as expected.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting a problem. Please check the [open issues](https://github.com/cloudless-garden/ha-gardena-smart-local-preview/issues) first, the problem may already be known.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Describe the problem and what you expected to happen instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open the valve from the dashboard
+        2. ...
+    validations:
+      required: false
+  - type: input
+    id: integration-version
+    attributes:
+      label: Integration version
+      description: Shown in the Marketplace or HACS, or in `manifest.json`.
+      placeholder: "0.4.0"
+    validations:
+      required: true
+  - type: input
+    id: ha-version
+    attributes:
+      label: Home Assistant version
+      description: "**Settings → About**"
+      placeholder: "2026.11.1"
+    validations:
+      required: true
+  - type: dropdown
+    id: installation
+    attributes:
+      label: Installation method
+      options:
+        - Marketplace
+        - HACS
+        - Manual
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Affected device
+      description: The device name and its article number, see "Supported Devices" in the README.
+      placeholder: GARDENA smart Water Control 19031-20
+    validations:
+      required: false
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics
+      description: |
+        Open the gateway entry or the device under **Settings → Devices & Services**, open the three-dot menu and select **Download diagnostics**. Drop the file here. The password is removed from it.
+    validations:
+      required: false
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: |
+        Relevant log lines, with debug logging enabled if you can reproduce the problem. See [CONTRIBUTING.md](https://github.com/cloudless-garden/ha-gardena-smart-local-preview/blob/main/CONTRIBUTING.md#reporting-a-problem) for how to enable it.
+      render: text
+    validations:
+      required: false
