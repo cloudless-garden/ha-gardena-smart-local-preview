@@ -1,0 +1,30 @@
+# SPDX-FileCopyrightText: 2026 GARDENA GmbH
+#
+# SPDX-License-Identifier: Apache-2.0
+
+name: Feature request
+description: Suggest a new feature or support for a device.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: use-case
+    attributes:
+      label: What do you want to do?
+      description: Describe what you want to do in Home Assistant and why the integration does not let you do it today.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: How could it work?
+      description: Optional. An idea of the entity, action or setting you have in mind.
+    validations:
+      required: false
+  - type: input
+    id: device
+    attributes:
+      label: Device
+      description: If this is about a specific device, its name and article number.
+      placeholder: GARDENA smart Irrigation Control 19032-20
+    validations:
+      required: false
