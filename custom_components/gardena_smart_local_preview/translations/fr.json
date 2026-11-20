@@ -102,6 +102,21 @@
           "downloaded": "Téléchargé",
           "updating": "Mise à jour"
         }
+      },
+      "next_start_source": {
+        "name": "Raison de l'attente",
+        "state": {
+          "no_source": "Aucune",
+          "daily_limit": "Limite journalière",
+          "week_timer": "Programmation",
+          "countdown": "Compte à rebours",
+          "charging": "Charge",
+          "auto_timer": "Minuterie automatique",
+          "frost": "Gel"
+        }
+      },
+      "next_start": {
+        "name": "Prochain démarrage automatique"
       }
     },
     "valve": {

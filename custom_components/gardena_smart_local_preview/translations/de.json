@@ -102,6 +102,21 @@
           "downloaded": "Heruntergeladen",
           "updating": "Wird aktualisiert"
         }
+      },
+      "next_start_source": {
+        "name": "Wartegrund",
+        "state": {
+          "no_source": "Nichts",
+          "daily_limit": "Tageslimit",
+          "week_timer": "Zeitplan",
+          "countdown": "Countdown",
+          "charging": "Laden",
+          "auto_timer": "Automatik",
+          "frost": "Frost"
+        }
+      },
+      "next_start": {
+        "name": "Nächster automatischer Start"
       }
     },
     "valve": {

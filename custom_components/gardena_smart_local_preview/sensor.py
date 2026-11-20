@@ -4,10 +4,11 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from functools import partial
 from typing import ClassVar
 
-from gardena_smart_local_api.devices import Pump
+from gardena_smart_local_api.devices import MowerNextStartSource, Pump
 from gardena_smart_local_api.devices.device import Device, FirmwareUpdateState
 from gardena_smart_local_api.devices.irrigation import PumpState
 from homeassistant.components.sensor import (
@@ -27,6 +28,7 @@ from homeassistant.const import (
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
+from homeassistant.util import dt as dt_util
 
 from .coordinator import GardenaSmartLocalCoordinator
 from .entity import EntityFactories, GardenaEntity, async_setup_device_entities
@@ -79,6 +81,13 @@ async def async_setup_entry(
             )
             entities["pump_state"] = partial(
                 GardenaPumpStateSensor, coordinator, device
+            )
+        if hasattr(device, "next_start_source"):
+            entities["next_start_source"] = partial(
+                GardenaNextStartSourceSensor, coordinator, device
+            )
+            entities["next_start"] = partial(
+                GardenaNextStartSensor, coordinator, device
             )
         if hasattr(device, "schedule_count"):
             entities["schedule_count"] = partial(
@@ -335,6 +344,52 @@ class GardenaPumpStateSensor(GardenaEntity, SensorEntity):
             return None
         state = device.pump_state
         return str(state) if state is not None else None
+
+
+class GardenaNextStartSourceSensor(GardenaEntity, SensorEntity):
+    _attr_device_class = SensorDeviceClass.ENUM
+    _attr_options: ClassVar = [str(source) for source in MowerNextStartSource]
+    _attr_translation_key = "next_start_source"
+
+    def __init__(
+        self,
+        coordinator: GardenaSmartLocalCoordinator,
+        device: Device,
+    ) -> None:
+        super().__init__(coordinator, device)
+        self._attr_unique_id = f"{device.id}_next_start_source"
+
+    @property
+    def native_value(self) -> str | None:
+        device = self.coordinator.data.get(self._device.id)
+        if not device:
+            return None
+        source = device.next_start_source
+        return str(source) if source is not None else None
+
+
+class GardenaNextStartSensor(GardenaEntity, SensorEntity):
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
+    _attr_translation_key = "next_start"
+
+    def __init__(
+        self,
+        coordinator: GardenaSmartLocalCoordinator,
+        device: Device,
+    ) -> None:
+        super().__init__(coordinator, device)
+        self._attr_unique_id = f"{device.id}_next_start"
+
+    @property
+    def native_value(self) -> datetime | None:
+        device = self.coordinator.data.get(self._device.id)
+        if not device:
+            return None
+        next_start = device.next_start
+        if next_start is None:
+            return None
+        # The mower reports its local time, which follows the gateway's.
+        return next_start.replace(tzinfo=dt_util.get_default_time_zone())
 
 
 class GardenaScheduleCountSensor(GardenaEntity, SensorEntity):

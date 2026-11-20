@@ -102,6 +102,21 @@
           "downloaded": "Pobrano",
           "updating": "Aktualizacja"
         }
+      },
+      "next_start_source": {
+        "name": "Powód oczekiwania",
+        "state": {
+          "no_source": "Brak",
+          "daily_limit": "Limit dzienny",
+          "week_timer": "Harmonogram",
+          "countdown": "Odliczanie",
+          "charging": "Ładowanie",
+          "auto_timer": "Timer automatyczny",
+          "frost": "Mróz"
+        }
+      },
+      "next_start": {
+        "name": "Następny automatyczny start"
       }
     },
     "valve": {
