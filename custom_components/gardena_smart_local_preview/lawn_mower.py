@@ -84,6 +84,13 @@ class GardenaMower(GardenaEntity, LawnMowerEntity):
             self._attr_supported_features |= LawnMowerEntityFeature.PAUSE
 
     @property
+    def available(self) -> bool:
+        if not super().available:
+            return False
+        # A mower switched off cannot be controlled.
+        return self.coordinator.data[self._device.id].state != MowerState.OFF
+
+    @property
     def activity(self) -> LawnMowerActivity | None:
         device = self.coordinator.data.get(self._device.id)
         if device is None:
@@ -97,7 +104,7 @@ class GardenaMower(GardenaEntity, LawnMowerEntity):
             case MowerState.LEAVING | MowerState.MOWING:
                 return LawnMowerActivity.MOWING
 
-            case MowerState.PAUSED:
+            case MowerState.PAUSED | MowerState.STOPPED:
                 return LawnMowerActivity.PAUSED
 
             case MowerState.RETURNING:
