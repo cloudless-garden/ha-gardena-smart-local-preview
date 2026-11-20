@@ -129,6 +129,21 @@
       },
       "collisions": {
         "name": "Kolizje"
+      },
+      "mower_state": {
+        "name": "Stan",
+        "state": {
+          "unknown": "Nieznany",
+          "parked": "Zaparkowana",
+          "leaving": "Opuszcza stację ładowania",
+          "mowing": "Koszenie",
+          "paused": "Wstrzymana",
+          "returning": "Powrót",
+          "charging": "Ładowanie",
+          "error": "Błąd",
+          "stopped": "Zatrzymana",
+          "off": "Wyłączona"
+        }
       }
     },
     "valve": {

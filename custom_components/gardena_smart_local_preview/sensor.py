@@ -11,7 +11,9 @@ from typing import ClassVar
 from gardena_smart_local_api.devices import (
     Gen1Mower1,
     Gen1Mower2,
+    Gen2Mower,
     MowerNextStartSource,
+    MowerState,
     Pump,
 )
 from gardena_smart_local_api.devices.device import Device, FirmwareUpdateState
@@ -87,6 +89,10 @@ async def async_setup_entry(
             )
             entities["pump_state"] = partial(
                 GardenaPumpStateSensor, coordinator, device
+            )
+        if isinstance(device, Gen1Mower1 | Gen1Mower2 | Gen2Mower):
+            entities["mower_state"] = partial(
+                GardenaMowerStateSensor, coordinator, device
             )
         if isinstance(device, Gen1Mower1 | Gen1Mower2):
             entities["next_start_source"] = partial(
@@ -383,6 +389,28 @@ class GardenaMowerStatisticSensor(GardenaEntity, SensorEntity):
         if not device:
             return None
         return getattr(device, self._key)
+
+
+class GardenaMowerStateSensor(GardenaEntity, SensorEntity):
+    _attr_device_class = SensorDeviceClass.ENUM
+    _attr_options: ClassVar = [str(state) for state in MowerState]
+    _attr_translation_key = "mower_state"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(
+        self,
+        coordinator: GardenaSmartLocalCoordinator,
+        device: Device,
+    ) -> None:
+        super().__init__(coordinator, device)
+        self._attr_unique_id = f"{device.id}_mower_state"
+
+    @property
+    def native_value(self) -> str | None:
+        device = self.coordinator.data.get(self._device.id)
+        if not device:
+            return None
+        return str(device.state)
 
 
 class GardenaNextStartSourceSensor(GardenaEntity, SensorEntity):

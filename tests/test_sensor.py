@@ -12,7 +12,7 @@ from pathlib import Path
 from unittest.mock import MagicMock
 from zoneinfo import ZoneInfo
 
-from gardena_smart_local_api.devices import MowerNextStartSource
+from gardena_smart_local_api.devices import MowerNextStartSource, MowerState
 from homeassistant.util import dt as dt_util
 
 from custom_components.gardena_smart_local_preview.sensor import (
@@ -73,7 +73,10 @@ def test_mower_enum_sensors_translate_every_option() -> None:
         sensors = json.loads((translations / f"{language}.json").read_text())["entity"][
             "sensor"
         ]
-        for key, enum in (("next_start_source", MowerNextStartSource),):
+        for key, enum in (
+            ("next_start_source", MowerNextStartSource),
+            ("mower_state", MowerState),
+        ):
             states = sensors[key]["state"]
             assert set(states) == {str(value) for value in enum}, (language, key)
 
