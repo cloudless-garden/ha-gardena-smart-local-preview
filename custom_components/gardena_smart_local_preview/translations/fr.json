@@ -147,6 +147,16 @@
         }
       }
     },
+    "enable_output": {
+      "name": "Activer la sortie",
+      "description": "Active la sortie d'une prise commandée pendant une durée déterminée, en remplaçant éventuellement sa durée configurée pour cet appel uniquement. La sortie est désactivée automatiquement une fois cette durée écoulée.",
+      "fields": {
+        "duration": {
+          "name": "Durée",
+          "description": "Durée d'activation de la prise, en secondes (minimum 1). Utilise la durée configurée de la prise si omis."
+        }
+      }
+    },
     "start_pump": {
       "name": "Démarrer la pompe",
       "description": "Démarre une pompe pendant une durée déterminée, en remplaçant éventuellement sa durée configurée pour cet appel uniquement. La pompe s'arrête automatiquement une fois cette durée écoulée.",
