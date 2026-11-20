@@ -117,6 +117,18 @@
       },
       "next_start": {
         "name": "Następny automatyczny start"
+      },
+      "running_time": {
+        "name": "Czas jazdy"
+      },
+      "cutting_time": {
+        "name": "Czas koszenia"
+      },
+      "charging_cycles": {
+        "name": "Cykle ładowania"
+      },
+      "collisions": {
+        "name": "Kolizje"
       }
     },
     "valve": {

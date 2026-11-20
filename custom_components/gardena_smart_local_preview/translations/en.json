@@ -117,6 +117,18 @@
       },
       "next_start": {
         "name": "Next automatic start"
+      },
+      "running_time": {
+        "name": "Running time"
+      },
+      "cutting_time": {
+        "name": "Cutting time"
+      },
+      "charging_cycles": {
+        "name": "Charging cycles"
+      },
+      "collisions": {
+        "name": "Collisions"
       }
     },
     "valve": {
