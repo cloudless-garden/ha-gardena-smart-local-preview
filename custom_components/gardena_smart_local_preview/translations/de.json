@@ -102,6 +102,48 @@
           "downloaded": "Heruntergeladen",
           "updating": "Wird aktualisiert"
         }
+      },
+      "next_start_source": {
+        "name": "Wartegrund",
+        "state": {
+          "no_source": "Nichts",
+          "daily_limit": "Tageslimit",
+          "week_timer": "Zeitplan",
+          "countdown": "Countdown",
+          "charging": "Laden",
+          "auto_timer": "Automatik",
+          "frost": "Frost"
+        }
+      },
+      "next_start": {
+        "name": "Nächster automatischer Start"
+      },
+      "running_time": {
+        "name": "Fahrzeit"
+      },
+      "cutting_time": {
+        "name": "Mähzeit"
+      },
+      "charging_cycles": {
+        "name": "Ladezyklen"
+      },
+      "collisions": {
+        "name": "Kollisionen"
+      },
+      "mower_state": {
+        "name": "Zustand",
+        "state": {
+          "unknown": "Unbekannt",
+          "parked": "Geparkt",
+          "leaving": "Verlässt die Ladestation",
+          "mowing": "Mäht",
+          "paused": "Pausiert",
+          "returning": "Kehrt zurück",
+          "charging": "Lädt",
+          "error": "Fehler",
+          "stopped": "Gestoppt",
+          "off": "Aus"
+        }
       }
     },
     "valve": {
