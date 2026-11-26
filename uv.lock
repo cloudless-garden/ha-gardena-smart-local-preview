@@ -1925,7 +1925,7 @@ wheels = [
 
 [[package]]
 name = "gardena-smart-local-api"
-version = "0.3.0"
+version = "0.4.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiofiles" },
@@ -1941,9 +1941,9 @@ dependencies = [
     { name = "pyyaml", version = "6.0.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.13.2'" },
     { name = "pyyaml", version = "6.0.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.13.2'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/97/55/0330904070711ec368c64e2348a351233628147d19f092a58d4dec45d41b/gardena_smart_local_api-0.3.0.tar.gz", hash = "sha256:99c8ed471c1e4ff3fb5a48cd4daf85a6e80f96ea0ba77fdbfc5a56dc154624d1", size = 203670, upload-time = "2026-11-18T07:52:51.914Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a0/29/81805a4226810a0099647ccd3865429cd99e2bf7e2ebbcf9a555b35212bf/gardena_smart_local_api-0.4.0.tar.gz", hash = "sha256:ba47dd8ae3f2def532072b45c2c7c9024c036e7d309ce36931402979a9f2d146", size = 214241, upload-time = "2026-11-26T15:59:27.518Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f9/8e/996018d3ec8ebd70244d6c94eed7052483b041be2280dfcf69d3eb3c59aa/gardena_smart_local_api-0.3.0-py3-none-any.whl", hash = "sha256:c7b24a28febb0d0adb9e9ab58ef24de2f3f6bf7d3049e0aa831e996e85172790", size = 94855, upload-time = "2026-11-18T07:52:50.646Z" },
+    { url = "https://files.pythonhosted.org/packages/1d/85/ef20c5a6c0bd4ba0f73619686e05d40a6f39ef31f93148bd45a8608a0e77/gardena_smart_local_api-0.4.0-py3-none-any.whl", hash = "sha256:96331d165a7c79f2827c389c50e82ab1be5b6016b5ed260b3becffb79c7e5cc8", size = 101603, upload-time = "2026-11-26T15:59:26.11Z" },
 ]
 
 [[package]]
@@ -2047,7 +2047,7 @@ dev = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "gardena-smart-local-api", specifier = "==0.3.0" },
+    { name = "gardena-smart-local-api", specifier = "==0.4.0" },
     { name = "pytest-homeassistant-custom-component", specifier = ">=0.13" },
     { name = "reuse", specifier = ">=6.2.0" },
 ]
@@ -5012,7 +5012,7 @@ resolution-markers = [
     "python_full_version >= '3.13.2' and python_full_version < '3.14'",
 ]
 dependencies = [
-    { name = "greenlet", marker = "(python_full_version < '3.14' and platform_machine == 'AMD64') or (python_full_version >= '3.14.2' and platform_machine == 'AMD64') or (python_full_version < '3.14' and platform_machine == 'WIN32') or (python_full_version >= '3.14.2' and platform_machine == 'WIN32') or (python_full_version < '3.14' and platform_machine == 'aarch64') or (python_full_version >= '3.14.2' and platform_machine == 'aarch64') or (python_full_version < '3.14' and platform_machine == 'amd64') or (python_full_version >= '3.14.2' and platform_machine == 'amd64') or (python_full_version < '3.14' and platform_machine == 'ppc64le') or (python_full_version >= '3.14.2' and platform_machine == 'ppc64le') or (python_full_version < '3.14' and platform_machine == 'win32') or (python_full_version >= '3.14.2' and platform_machine == 'win32') or (python_full_version < '3.14' and platform_machine == 'x86_64') or (python_full_version >= '3.14.2' and platform_machine == 'x86_64')" },
+    { name = "greenlet", marker = "(python_full_version < '3.14' or python_full_version >= '3.14.2') and (platform_machine == 'AMD64' or platform_machine == 'WIN32' or platform_machine == 'aarch64' or platform_machine == 'amd64' or platform_machine == 'ppc64le' or platform_machine == 'win32' or platform_machine == 'x86_64')" },
     { name = "typing-extensions" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/63/66/45b165c595ec89aa7dcc2c1cd222ab269bc753f1fc7a1e68f8481bd957bf/sqlalchemy-2.0.41.tar.gz", hash = "sha256:edba70118c4be3c2b1f90754d308d0b79c6fe2c0fdc52d8ddf603916f83f4db9", size = 9689424, upload-time = "2025-05-14T17:10:32.339Z" }
