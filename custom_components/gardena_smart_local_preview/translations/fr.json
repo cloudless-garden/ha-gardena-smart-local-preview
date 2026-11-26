@@ -230,11 +230,13 @@
         "data": {
           "host": "Hôte",
           "port": "Port",
-          "password": "Mot de passe"
+          "password": "Mot de passe",
+          "cloud_connection": "Connexion au cloud"
         },
         "data_description": {
           "host": "Adresse IP ou nom d'hôte de votre passerelle GARDENA smart",
-          "password": "Premier bloc de l'identifiant de la passerelle imprimé au dos de l'appareil (ex. `0824b95b` de `0824b95b-996c-48f7-83dc-…`)."
+          "password": "Premier bloc de l'identifiant de la passerelle imprimé au dos de l'appareil (ex. `0824b95b` de `0824b95b-996c-48f7-83dc-…`).",
+          "cloud_connection": "Indique si la passerelle est connectée au cloud GARDENA. Les services cloud de GARDENA ne fonctionnent que lorsque cette option est activée."
         }
       }
     },
@@ -242,7 +244,8 @@
       "cannot_connect": "Échec de connexion à la passerelle",
       "invalid_auth": "Mot de passe invalide",
       "invalid_host": "Nom d'hôte ou adresse IP invalide",
-      "unknown": "Erreur inattendue"
+      "unknown": "Erreur inattendue",
+      "cloud_connection_failed": "Impossible de modifier la connexion de la passerelle au cloud"
     },
     "abort": {
       "already_configured": "La passerelle est déjà configurée",

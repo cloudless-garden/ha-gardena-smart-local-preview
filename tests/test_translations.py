@@ -36,7 +36,15 @@ MAX_KEYS_IN_WARNING = 10
 # here: add the keys when translating a new string, remove them once a native
 # speaker has approved the text.
 PENDING_REVIEW: dict[str, set[str]] = {
+    "de": {
+        "config.error.cloud_connection_failed",
+        "config.step.reconfigure.data.cloud_connection",
+        "config.step.reconfigure.data_description.cloud_connection",
+    },
     "fr": {
+        "config.error.cloud_connection_failed",
+        "config.step.reconfigure.data.cloud_connection",
+        "config.step.reconfigure.data_description.cloud_connection",
         "config.error.invalid_host",
         "issues.duplicate_gateway.title",
         "issues.duplicate_gateway.description",
@@ -56,6 +64,9 @@ PENDING_REVIEW: dict[str, set[str]] = {
         "services.start_pump.fields.duration.description",
     },
     "pl": {
+        "config.error.cloud_connection_failed",
+        "config.step.reconfigure.data.cloud_connection",
+        "config.step.reconfigure.data_description.cloud_connection",
         "issues.duplicate_gateway.title",
         "issues.duplicate_gateway.description",
     },

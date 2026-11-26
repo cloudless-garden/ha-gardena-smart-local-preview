@@ -230,11 +230,13 @@
         "data": {
           "host": "Host",
           "port": "Port",
-          "password": "Passwort"
+          "password": "Passwort",
+          "cloud_connection": "Cloud-Verbindung"
         },
         "data_description": {
           "host": "IP-Adresse oder Hostname des GARDENA smart Gateways",
-          "password": "Erster Block der Gateway-ID auf der Rückseite des Geräts (z. B. `0824b95b` aus `0824b95b-996c-48f7-83dc-…`)."
+          "password": "Erster Block der Gateway-ID auf der Rückseite des Geräts (z. B. `0824b95b` aus `0824b95b-996c-48f7-83dc-…`).",
+          "cloud_connection": "Gibt an, ob das Gateway mit der GARDENA Cloud verbunden ist. Die Cloud-Dienste von GARDENA funktionieren nur, solange dies aktiviert ist."
         }
       }
     },
@@ -242,7 +244,8 @@
       "cannot_connect": "Verbindung zum Gateway fehlgeschlagen",
       "invalid_auth": "Falsches Passwort",
       "invalid_host": "Ungültiger Hostname oder ungültige IP-Adresse",
-      "unknown": "Unerwarteter Fehler"
+      "unknown": "Unerwarteter Fehler",
+      "cloud_connection_failed": "Die Cloud-Verbindung des Gateways konnte nicht geändert werden"
     },
     "abort": {
       "already_configured": "Gateway ist bereits konfiguriert",

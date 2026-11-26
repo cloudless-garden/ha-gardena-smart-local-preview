@@ -5,6 +5,10 @@
 DOMAIN = "gardena_smart_local_preview"
 
 DEFAULT_PORT = 8443
+
+# Config entry data key holding whether the gateway is connected to the cloud
+CONF_CLOUD_CONNECTION = "cloud_connection"
+
 DEFAULT_VALVE_DURATION_MINUTES = 30
 DEFAULT_POWER_DURATION_MINUTES = 30
 DEFAULT_PUMP_DURATION_MINUTES = 30

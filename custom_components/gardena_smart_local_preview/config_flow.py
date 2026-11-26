@@ -11,7 +11,9 @@ import aiohttp
 import voluptuous as vol
 from gardena_smart_local_api.client import (
     AuthenticationError,
+    ConfigApiError,
     GatewayClient,
+    GatewayConfigApi,
     fetch_certificate,
     hostname_from_certificate,
 )
@@ -30,7 +32,7 @@ from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
 from homeassistant.helpers.typing import ConfigType
 from yarl import URL
 
-from .const import DEFAULT_PORT, DOMAIN
+from .const import CONF_CLOUD_CONNECTION, DEFAULT_PORT, DOMAIN
 from .coordinator import GardenaSmartLocalCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -197,6 +199,13 @@ class GardenaSmartLocalConfigFlow(ConfigFlow, domain=DOMAIN):
                 user_input[CONF_PORT],
                 user_input.get(CONF_PASSWORD, ""),
             )
+            if not error and CONF_CLOUD_CONNECTION in user_input:
+                error = await _async_set_cloud_connection(
+                    self.hass,
+                    user_input[CONF_HOST],
+                    user_input.get(CONF_PASSWORD, ""),
+                    user_input[CONF_CLOUD_CONNECTION],
+                )
             if error:
                 errors["base"] = error
             else:
@@ -210,21 +219,24 @@ class GardenaSmartLocalConfigFlow(ConfigFlow, domain=DOMAIN):
                     entry, data=user_input, unique_id=unique_id
                 )
 
+        schema: dict[Any, Any] = {
+            vol.Required(CONF_HOST, default=entry.data.get(CONF_HOST, "")): _HOST,
+            vol.Optional(
+                CONF_PORT, default=entry.data.get(CONF_PORT, DEFAULT_PORT)
+            ): cv.port,
+            vol.Optional(CONF_PASSWORD, default=entry.data.get(CONF_PASSWORD, "")): str,
+        }
+        # Offer the setting only with the state the gateway has right now. A
+        # guessed default would change the setting when the form is saved.
+        cloud_connection = await _async_get_cloud_connection(
+            self.hass, entry.data[CONF_HOST], entry.data.get(CONF_PASSWORD, "")
+        )
+        if cloud_connection is not None:
+            schema[vol.Optional(CONF_CLOUD_CONNECTION, default=cloud_connection)] = bool
+
         return self.async_show_form(
             step_id="reconfigure",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(
-                        CONF_HOST, default=entry.data.get(CONF_HOST, "")
-                    ): _HOST,
-                    vol.Optional(
-                        CONF_PORT, default=entry.data.get(CONF_PORT, DEFAULT_PORT)
-                    ): cv.port,
-                    vol.Optional(
-                        CONF_PASSWORD, default=entry.data.get(CONF_PASSWORD, "")
-                    ): str,
-                }
-            ),
+            data_schema=vol.Schema(schema),
             errors=errors,
         )
 
@@ -261,6 +273,35 @@ async def _async_try_connect(
         return "unknown"
 
     await client.disconnect()
+    return None
+
+
+def _config_api(hass: HomeAssistant, host: str, password: str) -> GatewayConfigApi:
+    return GatewayConfigApi(host, password, session=async_get_clientsession(hass))
+
+
+async def _async_get_cloud_connection(
+    hass: HomeAssistant, host: str, password: str
+) -> bool | None:
+    try:
+        return await _config_api(hass, host, password).get_cloud_connection()
+    except (AuthenticationError, ConfigApiError, ValueError):
+        _LOGGER.debug("Could not read the cloud connection of %s", host, exc_info=True)
+        return None
+
+
+async def _async_set_cloud_connection(
+    hass: HomeAssistant, host: str, password: str, enabled: bool
+) -> str | None:
+    try:
+        await _config_api(hass, host, password).set_cloud_connection(enabled)
+    except AuthenticationError:
+        return "invalid_auth"
+    except ConfigApiError:
+        _LOGGER.debug(
+            "Could not change the cloud connection of %s", host, exc_info=True
+        )
+        return "cloud_connection_failed"
     return None
 
 
