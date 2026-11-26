@@ -78,7 +78,7 @@ async def test_open_valve_uses_default_duration(
     mock_device.build_open_valve_obj.assert_called_once_with(
         0, DEFAULT_VALVE_DURATION_MINUTES * 60
     )
-    coordinator.send_request.assert_awaited_once()
+    coordinator.send_command.assert_awaited_once()
 
 
 async def test_open_valve_for_custom_duration(
@@ -108,7 +108,7 @@ async def test_rejected_command_raises(
     coordinator: MagicMock, entry: MagicMock, mock_device: MagicMock
 ) -> None:
     """A negative reply from the gateway surfaces as an error."""
-    coordinator.send_request = AsyncMock(
+    coordinator.send_command = AsyncMock(
         side_effect=RequestError(
             "The request failed",
             IngressMessageList([Reply(request_id="1", success=False)]),
@@ -124,7 +124,7 @@ async def test_command_timeout_raises(
     coordinator: MagicMock, entry: MagicMock, mock_device: MagicMock
 ) -> None:
     """A command the gateway never confirms is reported as an error."""
-    coordinator.send_request = AsyncMock(side_effect=TimeoutError)
+    coordinator.send_command = AsyncMock(side_effect=TimeoutError)
     valve = GardenaValve(coordinator, entry, mock_device, 0)
 
     with pytest.raises(HomeAssistantError, match="Timed out"):
@@ -135,7 +135,7 @@ async def test_command_without_connection_raises(
     coordinator: MagicMock, entry: MagicMock, mock_device: MagicMock
 ) -> None:
     """A command sent while the gateway is unreachable is reported as an error."""
-    coordinator.send_request = AsyncMock(
+    coordinator.send_command = AsyncMock(
         side_effect=ConnectionError("WebSocket not connected")
     )
     valve = GardenaValve(coordinator, entry, mock_device, 0)

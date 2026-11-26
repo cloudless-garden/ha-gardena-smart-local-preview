@@ -300,7 +300,7 @@ class GardenaInclusionSubentryFlow(ConfigSubentryFlow):
     ) -> SubentryFlowResult:
         entry = self._get_entry()
         coordinator: GardenaSmartLocalCoordinator = entry.runtime_data
-        devices = {k: v.device_name for k, v in coordinator.includable_devices.items()}
+        devices = {k: v.name for k, v in coordinator.includable_devices.items()}
 
         if not devices:
             return self.async_abort(reason="no_devices_found")
@@ -316,11 +316,9 @@ class GardenaInclusionSubentryFlow(ConfigSubentryFlow):
                     data={"device_id": device_id},
                     unique_id=device_id,
                 )
-                # Broadcast coordinator update after _async_finish_flow adds the
+                # Publish the new device after _async_finish_flow adds the
                 # subentry to entry.subentries, so _add_new_devices sees it.
-                self.hass.loop.call_soon(
-                    coordinator.async_set_updated_data, coordinator.data
-                )
+                self.hass.loop.call_soon(coordinator.async_publish_devices)
                 return result
             errors["base"] = "inclusion_failed"
 

@@ -26,7 +26,7 @@ async def test_start_mowing_uses_default_duration(
     mock_device.build_start_mowing_obj.assert_called_once_with(
         DEFAULT_MOWER_DURATION_HOURS * 3600
     )
-    coordinator.send_request.assert_awaited_once()
+    coordinator.send_command.assert_awaited_once()
 
 
 async def test_start_mowing_uses_configured_duration(

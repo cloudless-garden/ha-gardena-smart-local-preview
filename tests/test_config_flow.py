@@ -12,6 +12,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import aiohttp
 import pytest
 import voluptuous_serialize
+from gardena_smart_local_api.client import IncludableDevice
+from gardena_smart_local_api.devices import Device
 from homeassistant.config_entries import SOURCE_IMPORT, SOURCE_USER, SOURCE_ZEROCONF
 from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_PORT
 from homeassistant.core import HomeAssistant
@@ -21,9 +23,6 @@ from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.gardena_smart_local_preview.const import DEFAULT_PORT, DOMAIN
-from custom_components.gardena_smart_local_preview.coordinator import (
-    IncludableDeviceInfo,
-)
 
 MOCK_HOST = "192.168.1.100"
 MOCK_PORT = DEFAULT_PORT
@@ -571,11 +570,12 @@ async def test_inclusion_subentry_success(
     instance_id = "instance-abc"
     device_id = "device-xyz"
     mock_coordinator.includable_devices = {
-        instance_id: IncludableDeviceInfo(
+        instance_id: IncludableDevice(
             instance_id=instance_id,
             service="some-service",
             device_id=device_id,
-            device_name="GARDENA Device 001",
+            name="GARDENA Device 001",
+            device_class=Device,
         )
     }
     mock_coordinator.async_include_device = AsyncMock(return_value=device_id)
@@ -610,11 +610,12 @@ async def test_inclusion_subentry_failed(hass: HomeAssistant, mock_coordinator) 
     """Subentry flow shows an error when the gateway rejects inclusion."""
     instance_id = "instance-abc"
     mock_coordinator.includable_devices = {
-        instance_id: IncludableDeviceInfo(
+        instance_id: IncludableDevice(
             instance_id=instance_id,
             service="some-service",
             device_id="device-xyz",
-            device_name="GARDENA Device 001",
+            name="GARDENA Device 001",
+            device_class=Device,
         )
     }
     mock_coordinator.async_include_device = AsyncMock(return_value=None)

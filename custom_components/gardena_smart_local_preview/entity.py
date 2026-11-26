@@ -263,9 +263,7 @@ class GardenaEntity(CoordinatorEntity[GardenaSmartLocalCoordinator]):
         the entity's state flip based on unconfirmed intermediate frames.
         """
         try:
-            await self.coordinator.send_request(
-                self._device.id, request, wait_for_response_sec=timeout_sec
-            )
+            await self.coordinator.send_command(self._device.id, request, timeout_sec)
         except TimeoutError as err:
             raise HomeAssistantError(
                 f"Timed out waiting for the GARDENA smart Gateway to confirm "
