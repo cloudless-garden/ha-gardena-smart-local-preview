@@ -35,7 +35,7 @@ def coordinator(mock_device: MagicMock) -> MagicMock:
     coord = MagicMock()
     coord.connected = True
     coord.data = {mock_device.id: mock_device}
-    coord.send_request = AsyncMock(return_value=[])
+    coord.send_command = AsyncMock(return_value=[])
     return coord
 
 
