@@ -230,11 +230,13 @@
         "data": {
           "host": "Host",
           "port": "Port",
-          "password": "Hasło"
+          "password": "Hasło",
+          "cloud_connection": "Połączenie z chmurą"
         },
         "data_description": {
           "host": "Adres IP lub nazwa hosta bramki GARDENA smart Gateway",
-          "password": "Pierwszy blok ID bramki wydrukowanego na spodzie urządzenia (np. `0824b95b` z `0824b95b-996c-48f7-83dc-…`)."
+          "password": "Pierwszy blok ID bramki wydrukowanego na spodzie urządzenia (np. `0824b95b` z `0824b95b-996c-48f7-83dc-…`).",
+          "cloud_connection": "Określa, czy bramka jest połączona z chmurą GARDENA. Usługi chmurowe GARDENA działają tylko wtedy, gdy ta opcja jest włączona."
         }
       }
     },
@@ -242,7 +244,8 @@
       "cannot_connect": "Nie udało się połączyć z bramką",
       "invalid_auth": "Nieprawidłowe hasło",
       "invalid_host": "Nieprawidłowa nazwa hosta lub adres IP",
-      "unknown": "Nieoczekiwany błąd"
+      "unknown": "Nieoczekiwany błąd",
+      "cloud_connection_failed": "Nie udało się zmienić połączenia bramki z chmurą"
     },
     "abort": {
       "already_configured": "Bramka jest już skonfigurowana",

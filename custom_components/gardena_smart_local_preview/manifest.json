@@ -7,7 +7,7 @@
   "documentation": "https://github.com/cloudless-garden/ha-gardena-smart-local-preview",
   "iot_class": "local_push",
   "issue_tracker": "https://github.com/cloudless-garden/ha-gardena-smart-local-preview/issues",
-  "requirements": ["gardena-smart-local-api==0.3.0"],
+  "requirements": ["gardena-smart-local-api@git+https://github.com/cloudless-garden/gardena-smart-local-api@66be9fde5c455fa30a97f78ebc970b14d406d84f"],
   "version": "0.4.0",
   "zeroconf": ["_gardena-smart._tcp.local."]
 }

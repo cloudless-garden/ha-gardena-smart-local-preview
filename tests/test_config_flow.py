@@ -12,7 +12,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import aiohttp
 import pytest
 import voluptuous_serialize
-from homeassistant.config_entries import SOURCE_IMPORT, SOURCE_USER, SOURCE_ZEROCONF
+from gardena_smart_local_api.client import AuthenticationError, ConfigApiError
+from homeassistant.config_entries import (
+    SOURCE_IMPORT,
+    SOURCE_USER,
+    SOURCE_ZEROCONF,
+    ConfigFlowResult,
+)
 from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_PORT
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType, InvalidData
@@ -20,7 +26,11 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.gardena_smart_local_preview.const import DEFAULT_PORT, DOMAIN
+from custom_components.gardena_smart_local_preview.const import (
+    CONF_CLOUD_CONNECTION,
+    DEFAULT_PORT,
+    DOMAIN,
+)
 from custom_components.gardena_smart_local_preview.coordinator import (
     IncludableDeviceInfo,
 )
@@ -33,6 +43,9 @@ PATCH_TRY_CONNECT = (
     "custom_components.gardena_smart_local_preview.config_flow._async_try_connect"
 )
 PATCH_EXTRACT_HOSTNAME_FROM_CERT = "custom_components.gardena_smart_local_preview.config_flow.async_extract_hostname_from_cert"
+PATCH_CONFIG_API = (
+    "custom_components.gardena_smart_local_preview.config_flow.GatewayConfigApi"
+)
 PATCH_SETUP_ENTRY = "custom_components.gardena_smart_local_preview.async_setup_entry"
 PATCH_UNLOAD_ENTRY = "custom_components.gardena_smart_local_preview.async_unload_entry"
 
@@ -49,6 +62,26 @@ def mock_extract_hostname_from_cert():
     """Skip the TLS certificate probe unless a test opts in."""
     with patch(PATCH_EXTRACT_HOSTNAME_FROM_CERT, return_value=None) as mock:
         yield mock
+
+
+@pytest.fixture(autouse=True)
+def mock_config_api():
+    """Skip the web interface of the gateway, which reports the cloud as on."""
+    with patch(PATCH_CONFIG_API) as config_api_class:
+        config_api = config_api_class.return_value
+        config_api.get_cloud_connection = AsyncMock(return_value=True)
+        config_api.set_cloud_connection = AsyncMock()
+        yield config_api_class
+
+
+@pytest.fixture
+def mock_get_cloud_connection(mock_config_api) -> AsyncMock:
+    return mock_config_api.return_value.get_cloud_connection
+
+
+@pytest.fixture
+def mock_set_cloud_connection(mock_config_api) -> AsyncMock:
+    return mock_config_api.return_value.set_cloud_connection
 
 
 def _make_zeroconf_info(
@@ -430,6 +463,131 @@ async def test_reconfigure_migrates_unique_id_from_certificate(
     assert result["type"] == "abort"
     assert result["reason"] == "reconfigure_successful"
     assert entry.unique_id == "GARDENA-123456"
+
+
+def _reconfigure_entry(hass: HomeAssistant) -> MockConfigEntry:
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id=MOCK_HOST,
+        data={CONF_HOST: MOCK_HOST, CONF_PORT: MOCK_PORT, CONF_PASSWORD: MOCK_PASSWORD},
+    )
+    entry.add_to_hass(hass)
+    return entry
+
+
+def _cloud_connection_default(result: ConfigFlowResult) -> bool | None:
+    for key in result["data_schema"].schema:
+        if key == CONF_CLOUD_CONNECTION:
+            return key.default()
+    return None
+
+
+@pytest.mark.parametrize("connected", [True, False])
+async def test_reconfigure_offers_the_cloud_connection_of_the_gateway(
+    hass: HomeAssistant, mock_get_cloud_connection: AsyncMock, connected: bool
+) -> None:
+    """The form starts with the state the gateway has, not with a guess."""
+    mock_get_cloud_connection.return_value = connected
+    entry = _reconfigure_entry(hass)
+
+    result = await entry.start_reconfigure_flow(hass)
+
+    assert _cloud_connection_default(result) is connected
+    mock_get_cloud_connection.assert_awaited_once_with()
+
+
+async def test_reconfigure_hides_the_cloud_connection_if_it_cannot_be_read(
+    hass: HomeAssistant, mock_get_cloud_connection: AsyncMock
+) -> None:
+    """A default that is not known would change the setting on save."""
+    mock_get_cloud_connection.side_effect = ConfigApiError
+    entry = _reconfigure_entry(hass)
+
+    result = await entry.start_reconfigure_flow(hass)
+
+    assert result["type"] == "form"
+    assert CONF_CLOUD_CONNECTION not in [key for key in result["data_schema"].schema]
+
+
+async def test_reconfigure_changes_the_cloud_connection(
+    hass: HomeAssistant, mock_setup_entry, mock_set_cloud_connection: AsyncMock
+) -> None:
+    """The new state goes to the gateway and into the entry."""
+    entry = _reconfigure_entry(hass)
+
+    result = await entry.start_reconfigure_flow(hass)
+    with patch(PATCH_TRY_CONNECT, return_value=None):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {
+                CONF_HOST: MOCK_HOST,
+                CONF_PORT: MOCK_PORT,
+                CONF_PASSWORD: MOCK_PASSWORD,
+                CONF_CLOUD_CONNECTION: False,
+            },
+        )
+
+    assert result["type"] == "abort"
+    assert result["reason"] == "reconfigure_successful"
+    assert entry.data[CONF_CLOUD_CONNECTION] is False
+    mock_set_cloud_connection.assert_awaited_once_with(False)
+
+
+async def test_reconfigure_without_the_cloud_connection_leaves_it_alone(
+    hass: HomeAssistant,
+    mock_setup_entry,
+    mock_get_cloud_connection: AsyncMock,
+    mock_set_cloud_connection: AsyncMock,
+) -> None:
+    """A gateway whose setting could not be read keeps it as it is."""
+    mock_get_cloud_connection.side_effect = ConfigApiError
+    entry = _reconfigure_entry(hass)
+
+    result = await entry.start_reconfigure_flow(hass)
+    with patch(PATCH_TRY_CONNECT, return_value=None):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {CONF_HOST: MOCK_HOST, CONF_PORT: MOCK_PORT, CONF_PASSWORD: MOCK_PASSWORD},
+        )
+
+    assert result["reason"] == "reconfigure_successful"
+    assert CONF_CLOUD_CONNECTION not in entry.data
+    mock_set_cloud_connection.assert_not_awaited()
+
+
+@pytest.mark.parametrize(
+    ("error", "expected"),
+    [
+        (AuthenticationError, "invalid_auth"),
+        (ConfigApiError, "cloud_connection_failed"),
+    ],
+)
+async def test_reconfigure_cloud_connection_failure_keeps_the_form_open(
+    hass: HomeAssistant,
+    mock_set_cloud_connection: AsyncMock,
+    error: type[Exception],
+    expected: str,
+) -> None:
+    """Nothing is saved if the gateway does not take the new state."""
+    mock_set_cloud_connection.side_effect = error
+    entry = _reconfigure_entry(hass)
+
+    result = await entry.start_reconfigure_flow(hass)
+    with patch(PATCH_TRY_CONNECT, return_value=None):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {
+                CONF_HOST: "192.168.1.200",
+                CONF_PORT: MOCK_PORT,
+                CONF_PASSWORD: MOCK_PASSWORD,
+                CONF_CLOUD_CONNECTION: False,
+            },
+        )
+
+    assert result["type"] == "form"
+    assert result["errors"] == {"base": expected}
+    assert entry.data[CONF_HOST] == MOCK_HOST
+    assert CONF_CLOUD_CONNECTION not in entry.data
 
 
 async def test_reconfigure_cannot_connect(hass: HomeAssistant) -> None:

@@ -230,11 +230,13 @@
         "data": {
           "host": "Host",
           "port": "Port",
-          "password": "Password"
+          "password": "Password",
+          "cloud_connection": "Cloud connection"
         },
         "data_description": {
           "host": "IP address or hostname of your GARDENA smart Gateway",
-          "password": "First block of the gateway ID printed on the back of the device (e.g. `0824b95b` from `0824b95b-996c-48f7-83dc-…`)."
+          "password": "First block of the gateway ID printed on the back of the device (e.g. `0824b95b` from `0824b95b-996c-48f7-83dc-…`).",
+          "cloud_connection": "Whether the gateway is connected to the GARDENA cloud. The cloud services of GARDENA only work while this is on."
         }
       }
     },
@@ -242,7 +244,8 @@
       "cannot_connect": "Failed to connect to the gateway",
       "invalid_auth": "Invalid password",
       "invalid_host": "Invalid hostname or IP address",
-      "unknown": "Unexpected error"
+      "unknown": "Unexpected error",
+      "cloud_connection_failed": "Could not change the cloud connection of the gateway"
     },
     "abort": {
       "already_configured": "Gateway is already configured",
