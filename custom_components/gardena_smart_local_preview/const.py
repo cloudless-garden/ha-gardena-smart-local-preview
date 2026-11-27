@@ -18,3 +18,5 @@ CONF_POWER_DURATION = "power_duration"
 CONF_PUMP_DURATION = "pump_duration"
 # Subentry data key holding a mower's default manual-start duration, in hours
 CONF_MOWER_DURATION = "mower_duration"
+# Subentry data key holding whether a mower may be asked to report its position
+CONF_POSITION_REPORTING = "position_reporting"

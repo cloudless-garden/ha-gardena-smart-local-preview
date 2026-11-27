@@ -22,6 +22,11 @@
         "name": "Zeitpläne löschen"
       }
     },
+    "device_tracker": {
+      "position": {
+        "name": "Position"
+      }
+    },
     "number": {
       "button_watering_duration": {
         "name": "Bewässerungsdauer per Taste"
@@ -102,6 +107,11 @@
           "downloaded": "Heruntergeladen",
           "updating": "Wird aktualisiert"
         }
+      }
+    },
+    "switch": {
+      "position_reporting": {
+        "name": "Positionsübermittlung"
       }
     },
     "valve": {

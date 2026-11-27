@@ -22,6 +22,11 @@
         "name": "Effacer les programmations"
       }
     },
+    "device_tracker": {
+      "position": {
+        "name": "Position"
+      }
+    },
     "number": {
       "button_watering_duration": {
         "name": "Durée d'arrosage bouton"
@@ -102,6 +107,11 @@
           "downloaded": "Téléchargé",
           "updating": "Mise à jour"
         }
+      }
+    },
+    "switch": {
+      "position_reporting": {
+        "name": "Signalement de la position"
       }
     },
     "valve": {
