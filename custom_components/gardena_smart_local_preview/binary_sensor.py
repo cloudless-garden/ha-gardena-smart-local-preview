@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from functools import partial
 
+from gardena_smart_local_api.devices import MowerState
 from gardena_smart_local_api.devices.device import Device
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
@@ -36,6 +37,10 @@ async def async_setup_entry(
             entities["frost_warning"] = partial(
                 GardenaFrostWarningSensor, coordinator, device
             )
+        if hasattr(device, "build_start_mowing_obj"):
+            entities["problem"] = partial(
+                GardenaMowerProblemSensor, coordinator, device
+            )
         return entities
 
     async_setup_device_entities(
@@ -61,3 +66,22 @@ class GardenaFrostWarningSensor(GardenaEntity, BinarySensorEntity):
         if not device:
             return None
         return device.has_frost_warning
+
+
+class GardenaMowerProblemSensor(GardenaEntity, BinarySensorEntity):
+    def __init__(
+        self,
+        coordinator: GardenaSmartLocalCoordinator,
+        device: Device,
+    ) -> None:
+        super().__init__(coordinator, device)
+        self._attr_unique_id = f"{device.id}_problem"
+        # Named by the device class, which Home Assistant already translates
+        self._attr_device_class = BinarySensorDeviceClass.PROBLEM
+
+    @property
+    def is_on(self) -> bool | None:
+        device = self.coordinator.data.get(self._device.id)
+        if not device or device.state == MowerState.UNKNOWN:
+            return None
+        return device.state == MowerState.ERROR
